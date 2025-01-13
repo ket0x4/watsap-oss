@@ -13,7 +13,6 @@ $host.ui.RawUI.WindowSize = New-Object System.Management.Automation.Host.Size(10
 
 
 $waDir = "$env:APPDATA\watsap"
-#$waProcessName = "defender.exe"
 $shellAutoStartDir = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\"
 
 if (-NOT (Test-Path -Path $waDir)) {
@@ -21,11 +20,14 @@ if (-NOT (Test-Path -Path $waDir)) {
     exit
 }
 
-Stop-Process -Name "*efender" -Force -ErrorAction SilentlyContinue -Confirm:$false
-Stop-Process -Name "*efender" -Force -ErrorAction SilentlyContinue -Confirm:$false
-Stop-Process -Name "*atsap" -Force -ErrorAction SilentlyContinue -Confirm:$false
+$waBinNames = @("*efender*, *atsap*")
+
+foreach ($bin in $waBinNames) {
+  Stop-Process -Name $bin -Force -ErrorAction SilentlyContinue -Confirm:$false
+  Remove-Item -Path $shellAutoStartDir\$bin -Force -ErrorAction SilentlyContinue -Recurse -Confirm:$false
+}
+
 Remove-Item -Path $waDir -Force -ErrorAction SilentlyContinue -Recurse -Confirm:$false
-Remove-Item -Path $shellAutoStartDir\defender.exe -Force -ErrorAction SilentlyContinue -Recurse -Confirm:$false
 Remove-MpPreference -ExclusionPath $shellAutoStartDir -ErrorAction SilentlyContinue
 Remove-MpPreference -ExclusionPath $waDir -ErrorAction SilentlyContinue
 Write-Host "watsap installation cleaned up"
