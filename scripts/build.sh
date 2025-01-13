@@ -89,6 +89,7 @@ case $build_type
     in
     1)
         clear
+        export CGO_ENABLED=0
         echo "Building release version"
         eval $build_linux
         echo "Built Linux binary"
@@ -103,6 +104,7 @@ case $build_type
         ;;
     2)
         clear
+        export CGO_ENABLED=1
         echo "Building debug version"
         eval $build_linux_debug
         echo "Built Linux debug binary"
