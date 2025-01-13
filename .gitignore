@@ -1,0 +1,10 @@
+*.sum
+*.json
+*.exe
+*.lnx
+*.bin
+*.log
+*.lock
+*.env
+*.syso
+dist/
