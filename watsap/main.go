@@ -11,8 +11,8 @@ import (
 )
 
 func init() {
-	config.DebugMode = true
-	config.WaLogging = true
+	config.DebugMode = false
+	config.WaLogging = false
 }
 
 func main() {
