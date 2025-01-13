@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd watsap
+clear
 
 # Function to check if a command is available
 function Test-Bin {
@@ -72,10 +73,34 @@ releaseFlags="$commonFlags -w -s"
 win_releaseFlags="$commonFlags -w -s -H=windowsgui"
 
 # build commands
-build_linux="GOOS=linux GOARCH=amd64 go build -ldflags '$releaseFlags' -o ../dist/watsap-linux-amd64.bin ."
-build_windows="GOOS=windows GOARCH=amd64 go build -ldflags '$win_releaseFlags' -o ../dist/watsap-windows-amd64.exe ."
-build_linux_debug="GOOS=linux GOARCH=amd64 go build -ldflags '$debugFlags' -o ../dist/watsap-linux-amd64-debug.bin ."
-build_windows_debug="GOOS=windows GOARCH=amd64 go build -ldflags '$debugFlags' -o ../dist/watsap-windows-amd64-debug.exe ."
+build_linux="GOOS=linux go build -ldflags '$releaseFlags' -o ../dist/watsap-linux-amd64.bin ."
+build_windows="GOOS=windows  go build -ldflags '$win_releaseFlags' -o ../dist/watsap-windows-amd64.exe ."
+build_linux_debug="GOOS=linux  go build -ldflags '$debugFlags' -o ../dist/watsap-linux-amd64-debug.bin ."
+build_windows_debug="GOOS=windows  go build -ldflags '$debugFlags' -o ../dist/watsap-windows-amd64-debug.exe ."
+
+# ask for build architecture
+echo "Select build architecture"
+echo "1. amd64"
+echo "2. i386"
+read -p "Enter your choice: " arch
+
+case $arch
+    in
+    1)
+        clear
+        echo "64-bit architecture selected"
+        export GOARCH=amd64
+        ;;
+    2)
+        clear
+        echo "32-bit architecture selected"
+        export GOARCH=386
+        ;;
+    *)
+        echo "Invalid choice"
+        exit 1
+        ;;
+esac
 
 # ask user for build type
 echo "Select build type"
@@ -83,19 +108,19 @@ echo "1. Release"
 echo "2. Debug"
 read -p "Enter your choice: " build_type
 
-echo "Build type selected: $build_type"
+#echo "Build type selected: $build_type"
 
 case $build_type
     in
     1)
-        clear
+        #clear
         export CGO_ENABLED=0
         echo "Building release version"
         eval $build_linux
         echo "Built Linux binary"
         eval $build_windows
         echo "Built Windows binary"
-        echo "Compressing binaries"
+        echo "Compressing binaries. This may take a while..."
         upx -9 -q -f --ultra-brute --no-owner ../dist/*.exe ../dist/*.bin > /dev/null
         echo "Compression completed"
         ls ../dist/*.exe 
@@ -103,7 +128,7 @@ case $build_type
         echo "Build complete"
         ;;
     2)
-        clear
+        #clear
         export CGO_ENABLED=1
         echo "Building debug version"
         eval $build_linux_debug
