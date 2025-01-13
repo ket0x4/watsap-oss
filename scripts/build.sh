@@ -68,7 +68,7 @@ Create_output_dir
 
 # Common flags for build
 commonFlags="-X 'watsap/utils/config.TG_BOT_TOKEN=$TG_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$TG_CHAT_ID'"
-debugFlags="$commonFlags"
+debugFlags="$commonFlags" + " -X 'watsap/utils/config.WaLogging=true' -X 'watsap/utils/config.DebugMode=true'"
 releaseFlags="$commonFlags -w -s"
 win_releaseFlags="$commonFlags -w -s -H=windowsgui"
 
