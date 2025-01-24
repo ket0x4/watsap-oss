@@ -1,12 +1,8 @@
 package config
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"path/filepath"
-	"runtime"
-	"time"
 )
 
 func SetupLog() {
@@ -18,7 +14,7 @@ func SetupLog() {
 		log.Fatal(err)
 	}
 	log.SetOutput(file)
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetFlags(0)
 	log.Println("Logging started")
 }
 
@@ -26,19 +22,14 @@ func Logger(msg, logtype string) {
 	if !WaLogging {
 		return
 	}
-	currentTime := time.Now().Format(time.RFC3339)
-	_, file, line, _ := runtime.Caller(1)
-	shortFile := filepath.Base(file)
-	formattedMsg := fmt.Sprintf("%s %s:%d %s", currentTime, shortFile, line, msg)
-
 	switch logtype {
 	case "fatal":
-		log.Fatal(formattedMsg)
+		log.Fatal(msg)
 	case "panic":
-		log.Panic(formattedMsg)
+		log.Panic(msg)
 	case "error":
-		log.Println("ERROR:", formattedMsg)
+		log.Println("ERROR:", msg)
 	default:
-		log.Println("INFO:", formattedMsg)
+		log.Println("INFO:", msg)
 	}
 }
