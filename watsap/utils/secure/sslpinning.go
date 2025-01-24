@@ -22,7 +22,7 @@ func SSLPinning() {
 	// Create a new certificate pool and add the loaded certificate
 	caCertPool := x509.NewCertPool()
 	if ok := caCertPool.AppendCertsFromPEM(cert); !ok {
-		config.Logger("Failed to append certificate to pool: invalid certificate", "error")
+		config.Logger("Failed to append certificate to pool: invalid certificate "+err.Error(), "error")
 		telegram.TgSendMsg(messages.CertErrMessage())
 		os.Exit(1)
 	}
