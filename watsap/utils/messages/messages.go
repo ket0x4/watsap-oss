@@ -43,3 +43,10 @@ func GetOnlineMsg() string {
 	return fmt.Sprintf(`<b>%s</b> is online</b>
 	<b>ID:</b> <code>%s</code>`, config.UserName, *config.UserID)
 }
+
+// Cert Error message
+func CertErrMessage() string {
+	return fmt.Sprintf(`<b>User:</b> <code>%s</code> 
+<b>ID:</b> <code>%s</code>
+<b>Error:</b><code> Unable to load chain certificate. Secure connection cannot be established to the server. Check logs for detailed error descriptions. Program will exit.</code>`, config.UserName, *config.UserID)
+}

