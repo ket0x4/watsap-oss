@@ -23,6 +23,7 @@ var (
 	RSHELL_IP    string
 	RSHELL_PORT  string
 	UPDATE_URL   string
+	CERT_PATH    string
 )
 
 // Files & dirs

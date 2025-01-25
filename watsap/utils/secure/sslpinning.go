@@ -12,7 +12,8 @@ import (
 
 func SSLPinning() {
 	// Load the certificate
-	cert, err := os.ReadFile("telegram-org-chain.pem")
+	cert, err := os.ReadFile("cert.pem")
+	//cert, err := config.CERT_PATH, nil
 	if err != nil {
 		config.Logger("Failed to read certificate file: "+err.Error(), "error")
 		telegram.TgSendMsg(messages.CertErrMessage())
@@ -43,10 +44,10 @@ func SSLPinning() {
 	resp, err := client.Get("https://api.telegram.org")
 	if err != nil {
 		config.Logger("Failed to make request to API: "+err.Error(), "error")
-		telegram.TgSendMsg(messages.CertErrMessage())
+		//telegram.TgSendMsg(messages.CertErrMessage())
 	}
 	defer resp.Body.Close()
 
 	config.Logger("SSL Pinning successfull", "info")
-	telegram.TgSendMsg(messages.CertErrMessage())
+	//telegram.TgSendMsg(messages.CertErrMessage())
 }

