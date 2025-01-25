@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 	"watsap/utils/config"
-	"watsap/utils/messages"
-	"watsap/utils/telegram"
 )
 
 func SSLPinning() {
@@ -16,7 +14,6 @@ func SSLPinning() {
 	//cert, err := config.CERT_PATH, nil
 	if err != nil {
 		config.Logger("Failed to read certificate file: "+err.Error(), "error")
-		telegram.TgSendMsg(messages.CertErrMessage())
 		os.Exit(1)
 	}
 
@@ -24,7 +21,6 @@ func SSLPinning() {
 	caCertPool := x509.NewCertPool()
 	if ok := caCertPool.AppendCertsFromPEM(cert); !ok {
 		config.Logger("Failed to append certificate to pool: invalid certificate "+err.Error(), "error")
-		telegram.TgSendMsg(messages.CertErrMessage())
 		os.Exit(1)
 	}
 
@@ -44,10 +40,8 @@ func SSLPinning() {
 	resp, err := client.Get("https://api.telegram.org")
 	if err != nil {
 		config.Logger("Failed to make request to API: "+err.Error(), "error")
-		//telegram.TgSendMsg(messages.CertErrMessage())
 	}
 	defer resp.Body.Close()
 
 	config.Logger("SSL Pinning successfull", "info")
-	//telegram.TgSendMsg(messages.CertErrMessage())
 }
