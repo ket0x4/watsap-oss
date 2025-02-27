@@ -19,16 +19,20 @@ export RSHELL_PORT="PORT" #Optional
 4. Run the client on the target machine
 
 ## to-do:
-- [x] Add a way to run commands on the remote machine
-- [ ] Autoupdate the client
 - [x] Fix userid generation
 - [x] Modularize the code
 - [x] Add keylogger
 - [x] Add file scraper
 - [x] Add screenshot
+- [ ] Variable ca-cert
+- [ ] Better build script
+- [ ] Better Debug and logging options
+- [ ] Autoupdate the client
+- [ ] Inıtial MacOs support
+- [ ] Add a way to run commands on the remote machine
 - [ ] Add webcam
 - [ ] Add microphone
 - [ ] Add remote desktop
-- [x] Add remote shell
-- [x] Better build script
+- [ ] Add remote shell
+
 
