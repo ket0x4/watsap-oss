@@ -2,43 +2,42 @@ package telegram
 
 import (
 	"bytes"
-	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"strings"
-	"watsap/utils/config" // Import the logging package
 )
 
 // form data for file upload
 func CreateForm(form map[string]string) (string, io.Reader, error) {
-	config.Logger("Starting form creation", "info")
+	log.Println("Starting form creation")
 	body := new(bytes.Buffer)
 	mp := multipart.NewWriter(body)
 	defer mp.Close()
 	for key, val := range form {
-		config.Logger(fmt.Sprintf("Processing field: %s", key), "info")
+		log.Printf("Processing field: %s", key)
 		if strings.HasPrefix(val, "@") {
 			filePath := val[1:]
-			config.Logger(fmt.Sprintf("Uploading file: %s", filePath), "info")
+			log.Printf("Uploading file: %s", filePath)
 			val = filePath
 			file, err := os.Open(val)
 			if err != nil {
-				config.Logger(fmt.Sprintf("Error opening file %s: %v", val, err), "error")
+				log.Printf("Error opening file %s: %v", val, err)
 				return "", nil, err
 			}
 			defer file.Close()
 			part, err := mp.CreateFormFile(key, val)
 			if err != nil {
-				config.Logger(fmt.Sprintf("Error creating form file for %s: %v", val, err), "error")
+				log.Printf("Error creating form file for %s: %v", val, err)
 				return "", nil, err
 			}
 			io.Copy(part, file)
 		} else {
 			mp.WriteField(key, val)
-			config.Logger(fmt.Sprintf("Added field %s with value %s", key, val), "info")
+			log.Printf("Added field %s with value %s", key, val)
 		}
 	}
-	config.Logger("Form creation completed", "info")
+	log.Println("Form creation completed")
 	return mp.FormDataContentType(), body, nil
 }

@@ -2,6 +2,7 @@ package wainit
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 	"watsap/utils/config"
@@ -17,14 +18,14 @@ func AssignUserID() {
 	// create user id file
 	file, err := os.Create(config.DataFile)
 	if err != nil {
-		config.Logger("Error creating user id file: "+err.Error(), "error")
+		log.Printf("Error creating user id file: %s", err.Error())
 		return
 	}
 	defer file.Close()
 	// write user id to file
 	_, err = file.WriteString(*config.UserID)
 	if err != nil {
-		config.Logger("Error writing user id to file: "+err.Error(), "error")
+		log.Printf("Error writing user id to file: %s", err.Error())
 		return
 	}
 }
@@ -34,7 +35,7 @@ func GetUserID() string {
 	// open user id file
 	file, err := os.Open(config.DataFile)
 	if err != nil {
-		config.Logger("Error opening user id file: "+err.Error(), "error")
+		log.Printf("Error opening user id file: %s", err.Error())
 		return ""
 	}
 	defer file.Close()
@@ -42,7 +43,7 @@ func GetUserID() string {
 	buf := make([]byte, 6)
 	_, err = file.Read(buf)
 	if err != nil {
-		config.Logger("Error reading user id from file: "+err.Error(), "error")
+		log.Printf("Error reading user id from file: %s", err.Error())
 		return ""
 	}
 	return string(buf)
@@ -57,5 +58,5 @@ func InitUserID() {
 			AssignUserID()
 		}
 	}
-	config.Logger("[Init] User ID: "+*config.UserID, "info")
+	log.Printf("[Init] User ID: %s", *config.UserID)
 }

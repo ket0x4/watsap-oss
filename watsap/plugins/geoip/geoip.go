@@ -3,6 +3,7 @@ package geoip
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"watsap/utils/config"
@@ -34,28 +35,28 @@ func GetIP() {
 
 	resp, err := http.Get("http://ipinfo.io/json")
 	if err != nil {
-		config.Logger("[GeoIP] Error getting IP info: "+err.Error(), "error")
+		log.Printf("[GeoIP] Error getting IP info: %s", err.Error())
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		config.Logger("[GeoIP] Error reading response body: "+err.Error(), "error")
+		log.Printf("[GeoIP] Error reading response body: %s", err.Error())
 		return
 	}
 
 	var ipInfo IPInfo
 	err = json.Unmarshal(body, &ipInfo)
 	if err != nil {
-		config.Logger("[GeoIP] Error unmarshalling JSON: "+err.Error(), "error")
+		log.Printf("[GeoIP] Error unmarshalling JSON: %s", err.Error())
 		return
 	}
 
 	// save IP info to a JSON file
 	file, err := os.Create(config.GeoFile)
 	if err != nil {
-		config.Logger("[GeoIP] Error creating JSON file: "+err.Error(), "error")
+		log.Printf("[GeoIP] Error creating JSON file: %s", err.Error())
 		return
 	}
 	defer file.Close()
@@ -64,7 +65,7 @@ func GetIP() {
 	encoder.SetIndent("", "    ")
 	err = encoder.Encode(ipInfo)
 	if err != nil {
-		config.Logger("[GeoIP] Error encoding JSON: "+err.Error(), "error")
+		log.Printf("[GeoIP] Error encoding JSON: %s", err.Error())
 		return
 	}
 

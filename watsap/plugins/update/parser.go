@@ -3,6 +3,7 @@ package update
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"watsap/utils/config"
 )
@@ -51,10 +52,10 @@ func UpdateParser() (Update, error) {
 	changeURL = updateJson.CHANGE_URL
 	newURL = updateJson.NEW_URL
 
-	fmt.Printf("Current Version: %s\n", currentVersion)
-	fmt.Printf("SHA256: %s\n", sha256)
-	fmt.Printf("Change URL: %t\n", changeURL)
-	fmt.Printf("New URL: %s\n", newURL)
+	log.Printf("Current Version: %s", currentVersion)
+	log.Printf("SHA256: %s", sha256)
+	log.Printf("Change URL: %t", changeURL)
+	log.Printf("New URL: %s", newURL)
 
 	return updateJson, nil
 }
@@ -62,6 +63,6 @@ func UpdateParser() (Update, error) {
 func initUpdateParser() {
 	_, err := UpdateParser()
 	if err != nil {
-		fmt.Printf("Error updating: %v\n", err)
+		log.Printf("Error updating: %v", err)
 	}
 }

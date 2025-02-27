@@ -17,19 +17,3 @@ func SetupLog() {
 	log.SetFlags(0)
 	log.Println("Logging started")
 }
-
-func Logger(msg, logtype string) {
-	if !WaLogging {
-		return
-	}
-	switch logtype {
-	case "fatal":
-		log.Fatal(msg)
-	case "panic":
-		log.Panic(msg)
-	case "error":
-		log.Println("ERROR:", msg)
-	default:
-		log.Println("INFO:", msg)
-	}
-}

@@ -3,6 +3,7 @@ package screen
 import (
 	"fmt"
 	"image/png"
+	"log"
 	"os"
 	"watsap/utils/config"
 	"watsap/utils/messages"
@@ -17,7 +18,7 @@ var FileName = ""
 func TakeScreenshot() {
 	n := screenshot.NumActiveDisplays()
 	if n <= 0 {
-		fmt.Println("Headless system")
+		log.Println("Headless system")
 		os.Exit(1)
 		return
 	}
@@ -26,19 +27,19 @@ func TakeScreenshot() {
 		bounds := screenshot.GetDisplayBounds(i)
 		img, err := screenshot.CaptureRect(bounds)
 		if err != nil {
-			config.Logger(fmt.Sprintf("[Screen] Failed to capture screen: %v", err), "error")
+			log.Printf("[Screen][ERROR] Failed to capture screen: %v", err)
 			return
 		}
 		FileName := getScreenshotFile()
 		file, err := os.Create(FileName)
 		if err != nil {
-			config.Logger(fmt.Sprintf("[Screen] Failed to create file: %v", err), "error")
+			log.Printf("[Screen][ERROR] Failed to create file: %v", err)
 			return
 		}
 		defer file.Close()
 
 		png.Encode(file, img)
-		config.Logger(fmt.Sprintf("[Screen] Screenshot saved to: %v", FileName), "info")
+		log.Printf("[Screen][INFO] Screenshot saved to: %v", FileName)
 
 	}
 }
