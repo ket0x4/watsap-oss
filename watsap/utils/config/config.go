@@ -9,7 +9,7 @@ import (
 // Variables
 var (
 	Platform  = runtime.GOOS
-	WaVersion = "10.9.2"
+	WaVersion = "10.10"
 	FirstRun  = !files.Exists(DataFile)
 	DebugMode = false
 	WaLogging = false

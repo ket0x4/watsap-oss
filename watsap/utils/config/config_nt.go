@@ -16,7 +16,6 @@ var (
 
 func init() {
 	if !DebugMode {
-		Logger("[Wainit] Starting wainit", "default")
 		const SW_HIDE = 0
 		const SW_SHOW = 5
 	}

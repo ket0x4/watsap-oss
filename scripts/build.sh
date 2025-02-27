@@ -32,6 +32,7 @@ function Load_env {
         echo "Creating .env file"
         echo "Please fill in the required environment variables"
         Create_env
+        exit 1
     else 
         source ../.env
         echo "Setting environment variables"
