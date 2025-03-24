@@ -25,7 +25,7 @@ func getHomeDirUnix() string {
 	return home
 }
 
-// parse /etc/os-release
+/* parse /etc/os-release
 func getPlatform() string {
 	platform := "unknown"
 	osRelease := "/etc/os-release"
@@ -34,6 +34,7 @@ func getPlatform() string {
 	}
 	return platform
 }
+*/
 
 // files & dirs
 var waDirPrefix = fmt.Sprintf("%s/.config", homeDir)

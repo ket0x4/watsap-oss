@@ -1,10 +1,14 @@
 package netstatus
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+)
 
 // Check connection to a given URL
 func CheckConnection(url string) bool {
 	_, err := http.Get(url)
+	log.Println("Checking connection to", url)
 	return err == nil
 }
 
