@@ -5,6 +5,8 @@
 - Git
 
 ## Usage
+- clone watsap repository 
+- put builder in the `installer` directory
 - Run program and fill in the required fields.
 - Click "Build" to generate the installer.
 
