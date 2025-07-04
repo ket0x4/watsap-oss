@@ -25,10 +25,9 @@ export RSHELL_PORT="PORT" #Optional
 - [x] Add file scraper
 - [x] Add screenshot
 - [ ] Variable ca-cert
-- [ ] Better build script
+- [x] Better build script
 - [ ] Better Debug and logging options
 - [ ] Autoupdate the client
-- [ ] Inıtial MacOs support
 - [ ] Add a way to run commands on the remote machine
 - [ ] Add webcam
 - [ ] Add microphone
