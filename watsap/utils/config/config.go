@@ -11,8 +11,6 @@ var (
 	Platform  = runtime.GOOS
 	WaVersion = "10.10"
 	FirstRun  = !files.Exists(DataFile)
-	DebugMode = false
-	WaLogging = false
 	UserID    *string
 )
 
@@ -24,7 +22,13 @@ var (
 	RSHELL_PORT  string
 	UPDATE_URL   string
 	CERT_PATH    string
+	DEBUG_STATUS string
+	LOG_STATUS   string
 )
+
+var DebugMode = false
+var WaLogging = false
+var CertPath = "cert.pem"
 
 // Files & dirs
 var (

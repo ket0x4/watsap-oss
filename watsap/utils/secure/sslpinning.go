@@ -1,17 +1,20 @@
-// embed cert.pem
 package secure
 
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"embed"
 	"log"
 	"net/http"
 	"os"
 )
 
+//go:embed cert.pem
+var certpem embed.FS
+
 func SSLPinning() {
 	// Load the certificate
-	cert, err := os.ReadFile("cert.pem")
+	cert, err := os.ReadFile("certpem")
 	//cert, err := config.CERT_PATH, nil
 	if err != nil {
 		log.Fatalf("Failed to read certificate file: %s", err.Error())

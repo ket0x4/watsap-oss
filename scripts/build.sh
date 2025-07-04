@@ -68,8 +68,8 @@ echo "Creating output directory..."
 Create_output_dir
 
 # Common flags for build
-commonFlags="-X 'watsap/utils/config.TG_BOT_TOKEN=$TG_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$TG_CHAT_ID'"
-debugFlags="$commonFlags -X 'watsap/utils/config.WaLogging=true' -X 'watsap/utils/config.DebugMode=true'"
+commonFlags="-X 'watsap/utils/config.DEBUG_STATUS=0' -X 'watsap/utils/config.TG_BOT_TOKEN=$TG_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$TG_CHAT_ID'"
+debugFlags="$commonFlags -X 'watsap/utils/config.DEBUG_STATUS=1' -X 'watsap/utils/config.WaLogging=true' -X 'watsap/utils/config.DebugMode=true'"
 releaseFlags="$commonFlags -w -s"
 win_releaseFlags="$commonFlags -w -s -H=windowsgui"
 
