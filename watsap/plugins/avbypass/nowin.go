@@ -1,6 +1,6 @@
 //go:build !windows
 
-package defendernot
+package avbypass
 
 import "log"
 

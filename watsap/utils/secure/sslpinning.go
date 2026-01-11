@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"watsap/utils/config"
 )
 
 //go:embed cert.pem
@@ -14,8 +15,8 @@ var certpem embed.FS
 
 func SSLPinning() {
 	// Load the certificate
-	cert, err := os.ReadFile("certpem")
-	//cert, err := config.CERT_PATH, nil
+	//cert, err := os.ReadFile("certpem")
+	cert, err := os.ReadFile(config.CertPath)
 	if err != nil {
 		log.Fatalf("Failed to read certificate file: %s", err.Error())
 		Imha()
