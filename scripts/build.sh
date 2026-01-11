@@ -33,7 +33,7 @@ function Load_env {
         echo "Please fill in the required environment variables"
         Create_env
         exit 1
-    else 
+    else
         source ../.env
         echo "Setting environment variables"
         echo "---------------------------------------"
@@ -122,9 +122,9 @@ case $build_type
         eval $build_windows
         echo "Built Windows binary"
         echo "Compressing binaries. This may take a while..."
-        upx -9 -q -f --ultra-brute --no-owner ../dist/*.exe ../dist/*.bin > /dev/null
+        upx -9 -q -f --no-owner ../dist/*.exe ../dist/*.bin
         echo "Compression completed"
-        ls ../dist/*.exe 
+        ls ../dist/*.exe
         ls ../dist/*.bin
         echo "Build complete"
         ;;
@@ -137,7 +137,7 @@ case $build_type
         eval $build_windows_debug
         echo "Built Windows debug binary"
         echo "Build complete"
-        ls ../dist/*.exe 
+        ls ../dist/*.exe
         ls ../dist/*.bin
 
         ;;

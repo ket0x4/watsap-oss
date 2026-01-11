@@ -7,5 +7,6 @@
 *.lock
 *.env
 *.syso
+*.DS_Store
 dist/
 installer/Watsap Builder.tar.xz
