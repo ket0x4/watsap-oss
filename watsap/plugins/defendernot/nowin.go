@@ -2,7 +2,8 @@
 
 package defendernot
 
-// Main is a dummy function for non-windows systems.
+import "log"
+
 func Main() {
-	// Do nothing
+	log.Println("Running on non-Windows OS. Defender bypass not applicable.")
 }
