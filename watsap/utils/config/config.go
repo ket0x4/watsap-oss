@@ -9,7 +9,7 @@ import (
 // Variables
 var (
 	Platform  = runtime.GOOS
-	WaVersion = "10.10"
+	WaVersion = "11.00"
 	FirstRun  = !files.Exists(DataFile)
 	UserID    *string
 )
@@ -22,12 +22,12 @@ var (
 	RSHELL_PORT  string
 	UPDATE_URL   string
 	CERT_PATH    string
-	DEBUG_STATUS string
-	LOG_STATUS   string
+	DEBUG_STATUS bool
+	LOG_STATUS   bool
 )
 
-var DebugMode = false
-var WaLogging = false
+var DebugMode = true
+var WaLogging = true
 var CertPath = "cert.pem"
 
 // Files & dirs

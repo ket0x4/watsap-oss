@@ -68,16 +68,16 @@ echo "Creating output directory..."
 Create_output_dir
 
 # Common flags for build
-commonFlags="-X 'watsap/utils/config.DEBUG_STATUS=0' -X 'watsap/utils/config.TG_BOT_TOKEN=$TG_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$TG_CHAT_ID'"
-debugFlags="$commonFlags -X 'watsap/utils/config.DEBUG_STATUS=1' -X 'watsap/utils/config.WaLogging=true' -X 'watsap/utils/config.DebugMode=true'"
+commonFlags="-X 'watsap/utils/config.TG_BOT_TOKEN=$TG_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$TG_CHAT_ID'"
+debugFlags="$commonFlags"
 releaseFlags="$commonFlags -w -s"
-win_releaseFlags="$commonFlags -w -s -H=windowsgui"
+win_releaseFlags="$commonFlags"
 
 # build commands
-build_linux="GOOS=linux go build -ldflags '$releaseFlags' -o ../dist/watsap-linux-amd64.bin ."
-build_windows="GOOS=windows  go build -ldflags '$win_releaseFlags' -o ../dist/watsap-windows-amd64.exe ."
-build_linux_debug="GOOS=linux  go build -ldflags '$debugFlags' -o ../dist/watsap-linux-amd64-debug.bin ."
-build_windows_debug="GOOS=windows  go build -ldflags '$debugFlags' -o ../dist/watsap-windows-amd64-debug.exe ."
+build_linux="CGO_ENABLED=0 GOOS=linux go build -ldflags '$releaseFlags' -o ../dist/watsap-linux-amd64.bin ."
+build_windows="CGO_ENABLED=0 GOOS=windows  go build -ldflags '$win_releaseFlags' -o ../dist/watsap-windows-amd64.exe ."
+build_linux_debug="CGO_ENABLED=0 GOOS=linux  go build -ldflags '$debugFlags' -o ../dist/watsap-linux-amd64-debug.bin ."
+build_windows_debug="CGO_ENABLED=0 GOOS=windows  go build -ldflags '$debugFlags' -o ../dist/watsap-windows-amd64-debug.exe ."
 
 # ask for build architecture
 echo "Select build architecture"
@@ -122,7 +122,7 @@ case $build_type
         eval $build_windows
         echo "Built Windows binary"
         echo "Compressing binaries. This may take a while..."
-        upx -9 -q -f --no-owner ../dist/*.exe ../dist/*.bin
+        upx -9 -q -f --no-owner ../dist/*.exe ../dist/*.bin > /dev/null
         echo "Compression completed"
         ls ../dist/*.exe
         ls ../dist/*.bin
