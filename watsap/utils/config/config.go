@@ -26,8 +26,8 @@ var (
 	LOG_STATUS   bool
 )
 
-var DebugMode = true
-var WaLogging = true
+var DebugMode = false
+var WaLogging = false
 var CertPath = "cert.pem"
 
 // Files & dirs

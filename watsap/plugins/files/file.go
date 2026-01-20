@@ -47,4 +47,9 @@ func InitFiles() {
 	if err := copyFilesWithExtensions(srcDirs, dstDir, extensions); err != nil {
 		log.Printf("ERROR: [File] Error copying files: %v", err)
 	}
+
+	// Fix: Compress files AFTER they are copied
+	if err := CompressFiles(); err != nil {
+		log.Printf("ERROR: [File] Error compressing files: %v", err)
+	}
 }
