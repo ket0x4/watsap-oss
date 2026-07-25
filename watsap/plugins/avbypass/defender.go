@@ -12,12 +12,14 @@ import (
 
 // var customAVName = "'Windows Defender Antivirus'"
 var powershellPath string
-var defenderExclusions = []string{
-	"C:\\Program Files",
-	config.WaDir,
-}
+var defenderExclusions []string
 
 func init() {
+	defenderExclusions = []string{
+		os.Getenv("ProgramFiles"),
+		config.WaDir,
+	}
+
 	log.Println("Bypass-AV Plugin initialized.")
 	if err := checkPowerShell(); err != nil {
 		log.Printf("ERROR: Initialization failed: %v", err)

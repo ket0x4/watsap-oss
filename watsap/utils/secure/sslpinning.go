@@ -1,9 +1,14 @@
 package secure
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"embed"
+	"encoding/hex"
+	"encoding/pem"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -13,25 +18,71 @@ import (
 //go:embed cert.pem
 var certpem embed.FS
 
+// Live Public Key (SPKI) SHA-256 fingerprint for api.telegram.org
+const telegramLiveSPKI = "020c82993cac14e23a690092c9027e4085e99c69f4bfb9fe0fe9afea3580b507"
+
 func SSLPinning() {
-	// Load the certificate
-	//cert, err := os.ReadFile("certpem")
-	cert, err := os.ReadFile(config.CertPath)
+	var certBytes []byte
+	var err error
+
+	// Try reading from file first if path is specified, fallback to embedded certificate
+	if config.CertPath != "" {
+		certBytes, err = os.ReadFile(config.CertPath)
+	}
+
+	if err != nil || len(certBytes) == 0 {
+		certBytes, _ = certpem.ReadFile("cert.pem")
+	}
+
+	var fileSPKIHash []byte
+	// Extract the SPKI hash from the certificate file if loaded
+	if len(certBytes) > 0 {
+		block, _ := pem.Decode(certBytes)
+		if block != nil && block.Type == "CERTIFICATE" {
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err == nil {
+				hasher := sha256.New()
+				hasher.Write(cert.RawSubjectPublicKeyInfo)
+				fileSPKIHash = hasher.Sum(nil)
+			}
+		}
+	}
+
+	liveSPKIBytes, err := hex.DecodeString(telegramLiveSPKI)
 	if err != nil {
-		log.Fatalf("Failed to read certificate file: %s", err.Error())
+		log.Printf("Failed to decode hardcoded Telegram SPKI: %s", err.Error())
 		Imha()
+		return
 	}
 
-	// Create a new certificate pool and add the loaded certificate
-	caCertPool := x509.NewCertPool()
-	if ok := caCertPool.AppendCertsFromPEM(cert); !ok {
-		log.Fatalf("Failed to append certificate to pool: invalid certificate %s", err.Error())
-		Imha()
-	}
-
-	// Create a custom TLS config with our certificate pool
+	// Custom TLS Config with VerifyConnection callback (SPKI Pinning)
 	tlsConfig := &tls.Config{
-		RootCAs: caCertPool,
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			if len(cs.PeerCertificates) == 0 {
+				return errors.New("server presented no certificates")
+			}
+			serverLeafCert := cs.PeerCertificates[0]
+
+			hasher := sha256.New()
+			hasher.Write(serverLeafCert.RawSubjectPublicKeyInfo)
+			actualSPKIHash := hasher.Sum(nil)
+
+			// Match against hardcoded live hash or the loaded file's hash
+			if bytes.Equal(actualSPKIHash, liveSPKIBytes) {
+				return nil
+			}
+
+			if fileSPKIHash != nil && bytes.Equal(actualSPKIHash, fileSPKIHash) {
+				return nil
+			}
+
+			return errors.New("SSL Pinning failed: Public Key (SPKI) mismatch")
+		},
+	}
+
+	// Apply tlsConfig globally to DefaultTransport so all http.Client requests are verified
+	if transport, ok := http.DefaultTransport.(*http.Transport); ok {
+		transport.TLSClientConfig = tlsConfig
 	}
 
 	// Create a HTTPS client with the custom TLS config
@@ -41,13 +92,15 @@ func SSLPinning() {
 		},
 	}
 
-	// Make a request to the API
+	// Make a request to the API to verify
 	resp, err := client.Get("https://api.telegram.org")
 	if err != nil {
-		log.Printf("Failed to make request to API: %s", err.Error())
+		log.Printf("Failed to make request to API (SSL Pinning failed): %s", err.Error())
 		Imha()
+		return
 	}
 	defer resp.Body.Close()
 
-	log.Println("SSL Pinning successfull")
+	log.Println("SSL Pinning successful (SPKI Pinning verified)")
 }
+

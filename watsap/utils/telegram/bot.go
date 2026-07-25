@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 	"watsap/utils/config"
 )
 
@@ -15,11 +16,17 @@ import (
 func TgSendMsg(msg string) {
 	msg = url.QueryEscape(msg) // URL encoding
 	log.Println("Sending message:", msg)
-	url := fmt.Sprintf("%s%s%s", config.TgBotAPI, config.TG_BOT_TOKEN, config.TgSendTextMsg+msg+"&parse_mode=HTML")
-	if _, err := http.Get(url); err != nil {
-		log.Println("Error sending message:", err)
+	
+	client := &http.Client{
+		Timeout: 10 * time.Second,
 	}
-	log.Println("Message sent successfully")
+
+	urlStr := fmt.Sprintf("%s%s%s", config.TgBotAPI, config.TG_BOT_TOKEN, config.GetTgSendTextMsg()+msg+"&parse_mode=HTML")
+	if _, err := client.Get(urlStr); err != nil {
+		log.Println("Error sending message:", err)
+	} else {
+		log.Println("Message sent successfully")
+	}
 }
 
 // Send file with caption to Telegram
@@ -39,8 +46,12 @@ func TgSendFile(filePath string, caption string) error {
 		return err
 	}
 
-	url := fmt.Sprintf("%s%s%s", config.TgBotAPI, config.TG_BOT_TOKEN, config.TgFileApiURL)
-	_, err = http.Post(url, ct, body)
+	client := &http.Client{
+		Timeout: 30 * time.Second, // Timeout slightly longer for files
+	}
+
+	urlStr := fmt.Sprintf("%s%s%s", config.TgBotAPI, config.TG_BOT_TOKEN, config.TgFileApiURL)
+	_, err = client.Post(urlStr, ct, body)
 	if err != nil {
 		log.Println("Error sending file:", err)
 		return err

