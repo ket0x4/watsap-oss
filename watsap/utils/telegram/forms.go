@@ -3,41 +3,53 @@ package telegram
 import (
 	"bytes"
 	"io"
-	"log"
 	"mime/multipart"
 	"os"
-	"strings"
+	"path/filepath"
+	"watsap/utils/logger"
 )
 
 // form data for file upload
-func CreateForm(form map[string]string) (string, io.Reader, error) {
-	log.Println("Starting form creation")
+func CreateForm(form map[string][]byte) (string, *bytes.Buffer, error) {
+	logger.Debug("Telegram", "Starting form creation")
 	body := new(bytes.Buffer)
 	mp := multipart.NewWriter(body)
-	defer mp.Close()
+
 	for key, val := range form {
-		log.Printf("Processing field: %s", key)
-		if strings.HasPrefix(val, "@") {
-			filePath := val[1:]
-			log.Printf("Uploading file: %s", filePath)
-			val = filePath
-			file, err := os.Open(val)
+		logger.Debug("Telegram", "Processing field: %s", key)
+		if key == "document" && len(val) > 0 && val[0] == '@' {
+			filePath := string(val[1:])
+			logger.Debug("Telegram", "Uploading file: %s", filePath)
+			file, err := os.Open(filePath)
 			if err != nil {
-				log.Printf("Error opening file %s: %v", val, err)
+				logger.Error("Telegram", "Error opening file %s: %v", filePath, err)
+				mp.Close()
 				return "", nil, err
 			}
-			defer file.Close()
-			part, err := mp.CreateFormFile(key, val)
+			part, err := mp.CreateFormFile(key, filepath.Base(filePath))
 			if err != nil {
-				log.Printf("Error creating form file for %s: %v", val, err)
+				file.Close()
+				logger.Error("Telegram", "Error creating form file for %s: %v", filePath, err)
+				mp.Close()
 				return "", nil, err
 			}
-			io.Copy(part, file)
+			_, err = io.Copy(part, file)
+			file.Close()
+			if err != nil {
+				mp.Close()
+				return "", nil, err
+			}
 		} else {
-			mp.WriteField(key, val)
-			log.Printf("Added field %s with value %s", key, val)
+			part, err := mp.CreateFormField(key)
+			if err != nil {
+				mp.Close()
+				return "", nil, err
+			}
+			part.Write(val)
+			logger.Debug("Telegram", "Added field %s", key)
 		}
 	}
-	log.Println("Form creation completed")
+	mp.Close()
+	logger.Debug("Telegram", "Form creation completed")
 	return mp.FormDataContentType(), body, nil
 }

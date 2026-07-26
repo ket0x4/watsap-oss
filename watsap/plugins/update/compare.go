@@ -2,9 +2,9 @@ package update
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"watsap/utils/config"
+	"watsap/utils/logger"
 )
 
 func applyUpdate(newBinaryPath string) error {
@@ -29,7 +29,7 @@ func applyUpdate(newBinaryPath string) error {
 
 	err = os.Chmod(exePath, 0755)
 	if err != nil {
-		log.Printf("Warning: failed to set executable permissions: %v", err)
+		logger.Warn("Update", "Failed to set executable permissions: %v", err)
 	}
 
 	return nil
@@ -37,46 +37,50 @@ func applyUpdate(newBinaryPath string) error {
 
 // compare checks if the current version matches the remote version and downloads the update if necessary.
 func compare() {
-	log.Println("Downloading remote version information...")
+	if config.UPDATE_URL == "" {
+		logger.Debug("Update", "UPDATE_URL not configured, skipping update check")
+		return
+	}
+	logger.Info("Update", "Downloading remote version information...")
 	err := DownloadFile(config.UpdateFile, config.UPDATE_URL)
 	if err != nil {
-		log.Printf("Failed to download remote version file: %v\n", err)
+		logger.Error("Update", "Failed to download remote version file: %v", err)
 		return
 	}
 
 	_, err = UpdateParser()
 	if err != nil {
-		log.Printf("Failed to parse remote version info: %v\n", err)
+		logger.Error("Update", "Failed to parse remote version info: %v", err)
 		return
 	}
 
 	if currentVersion == remoteVersion {
-		log.Println("Current version is up-to-date. No need to update.")
+		logger.Info("Update", "Current version is up-to-date (%s).", currentVersion)
 		return
 	}
 
-	log.Printf("Current version (%s) is outdated. New version (%s) is available. Downloading update...", currentVersion, remoteVersion)
+	logger.Info("Update", "Current version (%s) is outdated. New version (%s) is available. Downloading update...", currentVersion, remoteVersion)
 	
 	exePath, err := os.Executable()
 	if err != nil {
-		log.Printf("Failed to locate executable path: %v\n", err)
+		logger.Error("Update", "Failed to locate executable path: %v", err)
 		return
 	}
 	newBinaryPath := exePath + ".new"
 
 	err = DownloadFile(newBinaryPath, newURL)
 	if err != nil {
-		log.Printf("Failed to download update binary from %s: %v\n", newURL, err)
+		logger.Error("Update", "Failed to download update binary from %s: %v", newURL, err)
 		return
 	}
 
-	log.Println("Applying update (hot-swapping binary)...")
+	logger.Info("Update", "Applying update (hot-swapping binary)...")
 	err = applyUpdate(newBinaryPath)
 	if err != nil {
-		log.Printf("Failed to apply update: %v\n", err)
+		logger.Error("Update", "Failed to apply update: %v", err)
 		return
 	}
 
-	log.Println("Update applied successfully. Running version is updated.")
+	logger.Info("Update", "Update applied successfully. Running version is updated.")
 }
 

@@ -1,8 +1,10 @@
 package update
 
-// Self update function is not complete disabled in main.go for now
+import "watsap/utils/config"
 
 func WatsapUpdate() {
-	initUpdateParser()
+	if config.UPDATE_URL == "" {
+		return
+	}
 	compare()
 }

