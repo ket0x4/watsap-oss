@@ -8,8 +8,6 @@ import (
 	"watsap/utils/config"
 )
 
-const jsonFile = "watsap.json"
-
 var currentVersion string
 var remoteVersion string
 var sha256 string
@@ -34,7 +32,7 @@ func ParseUpdate(data []byte) (Update, error) {
 // UpdateParser reads JSON data from a file, parses it, and sets new variables based on the parsed data.
 func UpdateParser() (Update, error) {
 	// Read JSON data from file
-	jsonData, err := os.ReadFile(jsonFile)
+	jsonData, err := os.ReadFile(config.UpdateFile)
 	if err != nil {
 		return Update{}, fmt.Errorf("failed to read JSON file: %v", err)
 	}

