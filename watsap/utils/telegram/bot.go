@@ -1,10 +1,11 @@
 package telegram
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"time"
 	"watsap/utils/config"
 )
@@ -12,19 +13,47 @@ import (
 // var GODEBUG = "http1debug=1"
 // var GODEBUG = "http2debug=1"
 
+type TelegramPayload struct {
+	ChatID    string `json:"chat_id"`
+	Text      string `json:"text"`
+	ParseMode string `json:"parse_mode"`
+}
+
 // Send message to Telegram
 func TgSendMsg(msg string) {
-	msg = url.QueryEscape(msg) // URL encoding
-	log.Println("Sending message:", msg)
+	log.Println("Sending message...")
 	
+	payload := TelegramPayload{
+		ChatID:    config.TG_CHAT_ID,
+		Text:      msg,
+		ParseMode: "HTML",
+	}
+	
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		log.Println("Error marshaling payload:", err)
+		return
+	}
+	// Wipe the JSON payload from memory securely when done
+	defer config.WipeMemory(jsonData)
+
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
-	urlStr := fmt.Sprintf("%s%s%s", config.TgBotAPI, config.TG_BOT_TOKEN, config.GetTgSendTextMsg()+msg+"&parse_mode=HTML")
-	if _, err := client.Get(urlStr); err != nil {
+	urlStr := fmt.Sprintf("%s%s/sendMessage", config.TgBotAPI, config.TG_BOT_TOKEN)
+	req, err := http.NewRequest("POST", urlStr, bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Println("Error creating request:", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
 		log.Println("Error sending message:", err)
 	} else {
+		defer resp.Body.Close()
 		log.Println("Message sent successfully")
 	}
 }

@@ -50,8 +50,10 @@ var (
 	TgFileApiURL  = "/sendDocument"
 )
 
-func GetTgSendTextMsg() string {
-	return "/sendMessage?chat_id=" + TG_CHAT_ID + "&text="
+func WipeMemory(data []byte) {
+	for i := range data {
+		data[i] = 0
+	}
 }
 
 // Decode helper

@@ -41,7 +41,7 @@ func builder(arch string, buildType string, platform string, botToken string, ch
 	encodedChatID := base64.StdEncoding.EncodeToString([]byte(chatID))
 
 	// Common flags
-	commonFlags := "-X 'watsap/utils/config.DEBUG_STATUS=0' -X 'watsap/utils/config.TG_BOT_TOKEN=" + encodedBotToken + "' -X 'watsap/utils/config.TG_CHAT_ID=" + encodedChatID + "'"
+	commonFlags := "-X 'watsap/utils/config.TG_BOT_TOKEN=" + encodedBotToken + "' -X 'watsap/utils/config.TG_CHAT_ID=" + encodedChatID + "'"
 	debugFlags := commonFlags
 	releaseFlags := commonFlags + " -w -s"
 	win_releaseFlags := commonFlags + " -w -s -H=windowsgui"
